@@ -8,6 +8,6 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		System.out.println("Hello world");
 
-		new PackageReader(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+		new Package(Paths.get("/home/shrimp/tmp/DMOILRIG.UNR"));
 	}
 }
