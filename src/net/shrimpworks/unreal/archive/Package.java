@@ -11,6 +11,7 @@ import java.util.Arrays;
 
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
 // http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format-data-de.html
+// possible reference for newer engines: http://wiki.tesnexus.com/index.php/UPK_File_Format_-_XCOM:EU_2012
 public class Package {
 
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;
@@ -99,7 +100,7 @@ public class Package {
 
 		if (readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("File " + pkg + " does not seem to be an Unreal package");
 
-		this.version = readInt();
+		this.version = readInt() & 0xFF;
 
 		this.flags = readInt();
 
@@ -126,40 +127,21 @@ public class Package {
 		this.names = names(nameCount, namePos);
 		this.exports = exports(exportCount, exportPos);
 		this.imports = imports(importCount, importPos);
-
-		System.out.println(Arrays.toString(names));
-		System.out.println(Arrays.toString(exports));
-		System.out.println(Arrays.toString(imports));
-
-		System.out.println(exports[0]);
-		if (exports[0].eClass < 0) {
-			int imp = -exports[0].eClass;
-			Import anImport = imports[imp - 1];
-			System.out.println(anImport);
-			System.out.println(names[anImport.name]);
-		}
-
-		System.out.println(flags);
-		for (PackageFlag flag : PackageFlag.values()) {
-			System.out.printf("%s: %b%n", flag, flag.appliesTo(this));
-		}
-
-		for (ObjectFlag flag : ObjectFlag.values()) {
-			System.out.printf("%s: %b%n", flag, flag.appliesTo(exports[0]));
-		}
 	}
 
 	/**
 	 * Package file version.
 	 *
-	 * @return package versino
+	 * <ul>
+	 * <li><= 68 Unreal</li>
+	 * <li>>= 69 Unreal Tournament</li>
+	 * <li>>= ~126 UT2004</li>
+	 * </ul>
+	 *
+	 * @return package version
 	 */
 	public int version() {
 		return version;
-	}
-
-	public int flags() {
-		return flags;
 	}
 
 	public Name[] names() {

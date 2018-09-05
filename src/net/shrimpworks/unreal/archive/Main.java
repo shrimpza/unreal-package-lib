@@ -8,6 +8,7 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		System.out.println("Hello world");
 
-		new Package(Paths.get("/home/shrimp/tmp/DMOILRIG.UNR"));
+		Package pgk = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+		System.out.printf("Package version: %d", pgk.version());
 	}
 }
