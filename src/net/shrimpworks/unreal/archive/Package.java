@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Collection;
 
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
 // http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format-data-de.html
@@ -156,6 +157,14 @@ public class Package {
 		return imports;
 	}
 
+	public PackageObject object(Export export) throws IOException {
+		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
+
+		moveTo(export.pos);
+
+		return null;
+	}
+
 	// --- buffer positioning and management
 
 	/**
@@ -288,7 +297,7 @@ public class Package {
 		return new Export(
 				readIndex(), // class
 				readIndex(), // super
-				readInt(),     // group
+				readInt(),   // group
 				readIndex(), // name
 				readInt(),   // flags
 				readIndex(), // size
@@ -376,7 +385,7 @@ public class Package {
 
 	public class Export {
 
-		private final int eClass;
+		private final int eClass; // FIXME for implement ObjectReference
 		private final int eSuper;
 		private final int eGroup;
 		private final int name;
@@ -422,4 +431,35 @@ public class Package {
 		}
 	}
 
+	public class PackageObject {
+
+		private final Collection<Property> properties;
+
+		public PackageObject(Collection<Property> properties) {
+			this.properties = properties;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("PackageObject [properties=%s]", properties);
+		}
+	}
+
+	public class Property {
+
+		private final int name;
+		private final int type;
+		private final byte[] value;
+
+		public Property(int name, int type, byte[] value) {
+			this.name = name;
+			this.type = type;
+			this.value = value;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("Property [name=%s, type=%s, value=%s]", name, type, value);
+		}
+	}
 }

@@ -10,5 +10,8 @@ public class Main {
 
 		Package pgk = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
 		System.out.printf("Package version: %d", pgk.version());
+
+		System.out.println(pgk.exports()[0]);
+		System.out.println(pgk.object(pgk.exports()[0]));
 	}
 }
