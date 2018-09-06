@@ -9,6 +9,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
 // http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format-data-de.html
@@ -41,8 +43,10 @@ public class Package {
 			this.flag = flag;
 		}
 
-		public boolean appliesTo(Package pkg) {
-			return (pkg.flags & flag) == flag;
+		public static EnumSet<PackageFlag> fromFlags(int flags) {
+			EnumSet<PackageFlag> objectFlags = EnumSet.noneOf(PackageFlag.class);
+			objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
+			return objectFlags;
 		}
 	}
 
@@ -87,8 +91,10 @@ public class Package {
 			this.flag = flag;
 		}
 
-		public boolean appliesTo(Export obj) {
-			return (obj.flags & flag) == flag;
+		public static EnumSet<ObjectFlag> fromFlags(int flags) {
+			EnumSet<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
+			objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
+			return objectFlags;
 		}
 	}
 
@@ -157,7 +163,11 @@ public class Package {
 		return imports;
 	}
 
-	public PackageObject object(Export export) throws IOException {
+	public EnumSet<PackageFlag> flags() {
+		return PackageFlag.fromFlags(flags);
+	}
+
+	public UnrealObject object(Export export) throws IOException {
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
 
 		moveTo(export.pos);
@@ -295,9 +305,9 @@ public class Package {
 	 */
 	private Export readExport() {
 		return new Export(
-				readIndex(), // class
-				readIndex(), // super
-				readInt(),   // group
+				new ObjectReference(readIndex()), // class
+				new ObjectReference(readIndex()), // super
+				new ObjectReference(readInt()),   // group
 				readIndex(), // name
 				readInt(),   // flags
 				readIndex(), // size
@@ -314,7 +324,7 @@ public class Package {
 		return new Import(
 				readIndex(), // package file
 				readIndex(), // class
-				readInt(),   // package name
+				new ObjectReference(readInt()),   // package name
 				readIndex()  // name
 		);
 	}
@@ -373,8 +383,8 @@ public class Package {
 			return name;
 		}
 
-		public int flags() {
-			return flags;
+		public EnumSet<ObjectFlag> flags() {
+			return ObjectFlag.fromFlags(flags);
 		}
 
 		@Override
@@ -383,30 +393,79 @@ public class Package {
 		}
 	}
 
+	public class ObjectReference {
+
+		private final int index;
+
+		public ObjectReference(int index) {
+			this.index = index;
+		}
+
+		public Object get() {
+			if (index < 0) {
+				return imports[(-index) - 1];
+			} else if (index > 0) {
+				return exports[index - 1];
+			} else {
+				return null;
+			}
+		}
+
+		@Override
+		public String toString() {
+			return String.format("ObjectReference [index=%s]", index);
+		}
+	}
+
 	public class Export {
 
-		private final int eClass; // FIXME for implement ObjectReference
-		private final int eSuper;
-		private final int eGroup;
+		private final ObjectReference objClass;
+		private final ObjectReference objSuper;
+		private final ObjectReference objGroup;
 		private final int name;
 		private final int flags;
 		private final int size;
 		private final int pos;
 
-		private Export(int eClass, int eSuper, int eGroup, int name, int flags, int size, int pos) {
-			this.eClass = eClass;
-			this.eSuper = eSuper;
-			this.eGroup = eGroup;
+		private Export(
+				ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, int name, int flags, int size, int pos) {
+			this.objClass = objClass;
+			this.objSuper = objSuper;
+			this.objGroup = objGroup;
 			this.name = name;
 			this.flags = flags;
 			this.size = size;
 			this.pos = pos;
 		}
 
+		public EnumSet<ObjectFlag> flags() {
+			return ObjectFlag.fromFlags(flags);
+		}
+
+		public ObjectReference objClass() {
+			return objClass;
+		}
+
+		public ObjectReference objSuper() {
+			return objSuper;
+		}
+
+		public ObjectReference objGroup() {
+			return objGroup;
+		}
+
+		public Name name() {
+			return names[name];
+		}
+
+		public int size() {
+			return size;
+		}
+
 		@Override
 		public String toString() {
-			return String.format("Export [eClass=%s, eSuper=%s, eGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-								 eClass, eSuper, eGroup, name, flags, size, pos);
+			return String.format("Export [objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
+								 objClass(), objSuper(), objGroup(), name(), flags(), size(), pos);
 		}
 	}
 
@@ -414,10 +473,10 @@ public class Package {
 
 		private final int file;
 		private final int className;
-		private final int packageName;
+		private final ObjectReference packageName;
 		private final int name;
 
-		private Import(int file, int className, int packageName, int name) {
+		private Import(int file, int className, ObjectReference packageName, int name) {
 			this.file = file;
 			this.className = className;
 			this.packageName = packageName;
@@ -427,21 +486,39 @@ public class Package {
 		@Override
 		public String toString() {
 			return String.format("Import [file=%s, className=%s, packageName=%s, name=%s]",
-								 file, className, packageName, name);
+								 file(), className(), packageName(), name());
+		}
+
+		public Name file() {
+			return names[file];
+		}
+
+		public Name className() {
+			return names[className];
+		}
+
+		public ObjectReference packageName() {
+			return packageName;
+		}
+
+		public Name name() {
+			return names[name];
 		}
 	}
 
-	public class PackageObject {
+	public class UnrealObject {
 
+		private final Export export;
 		private final Collection<Property> properties;
 
-		public PackageObject(Collection<Property> properties) {
+		public UnrealObject(Export export, Collection<Property> properties) {
+			this.export = export;
 			this.properties = properties;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("PackageObject [properties=%s]", properties);
+			return String.format("UnrealObject [export=%s, properties=%s]", export, properties);
 		}
 	}
 
