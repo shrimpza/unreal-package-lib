@@ -7,9 +7,11 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.stream.Collectors;
 
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
@@ -98,6 +100,38 @@ public class Package {
 		}
 	}
 
+	private enum PropertyType {
+		ByteProperty((byte)1),
+		IntegerProperty((byte)2),
+		BooleanProperty((byte)3),
+		FloatProperty((byte)4),
+		ObjectProperty((byte)5),
+		NameProperty((byte)6),
+		StringProperty((byte)7),
+		ClassProperty((byte)8),
+		ArrayProperty((byte)9),
+		StructProperty((byte)10),
+		VectorProperty((byte)11),
+		RotatorProperty((byte)12),
+		StrProperty((byte)13),
+		MapProperty((byte)14),
+		FixedArrayProperty((byte)15),
+		;
+
+		private final byte type;
+
+		PropertyType(byte type) {
+			this.type = type;
+		}
+
+		private static PropertyType get(byte type) {
+			for (PropertyType p : values()) {
+				if (p.type == type) return p;
+			}
+			return null;
+		}
+	}
+
 	public Package(Path pkg) throws IOException {
 		this.channel = FileChannel.open(pkg, StandardOpenOption.READ);
 		this.buffer = ByteBuffer.allocateDirect(1024 * 8)
@@ -170,7 +204,87 @@ public class Package {
 	public UnrealObject object(Export export) throws IOException {
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
 
+		System.out.println(export);
+
 		moveTo(export.pos);
+
+		UnrealObjectHeader header;
+		if (export.flags().contains(ObjectFlag.HasStack)) {
+			int node = readIndex();
+			header = new UnrealObjectHeader(
+					node, readIndex(), readLong(), readInt(),
+					node != 0 ? readIndex() : 0
+			);
+		} else {
+			header = null;
+		}
+
+		Name none = Arrays.stream(names).filter(n -> n.name().equals("None")).findFirst().orElse(null);
+
+		List<Property> properties = new ArrayList<>();
+		for (int i = 0; i < 3; i++) { // 256
+
+			Property p = readProperty();
+
+			if (p.name().equals(none)) break;
+			else properties.add(p);
+		}
+
+		return new UnrealObject(export, header, properties);
+	}
+
+	private Property readProperty() {
+		int name = readIndex();
+
+		byte propInfo = readByte();
+
+		byte type = (byte)(propInfo & 0b00001111);
+		int size = (propInfo & 0b01110000) >> 4;
+		boolean array = (propInfo & 0x80) > 0;
+
+		PropertyType propType = PropertyType.get(type);
+
+		// if arrayflag is set, next is the position of the array
+		int arrayPos = 0;
+		if (array && propType != PropertyType.BooleanProperty) {
+			arrayPos = readByte();
+		}
+
+		// if type is a struct the next byte will be the structname, assuming this is an INDEX
+		int structName = 0;
+		if (propType == PropertyType.StructProperty) {
+			structName = readIndex();
+		}
+
+		switch (size) {
+			case 0:
+				size = 1; break;
+			case 1:
+				size = 2; break;
+			case 2:
+				size = 4; break;
+			case 3:
+				size = 12; break;
+			case 4:
+				size = 16; break;
+			case 5:
+				size = readByte(); break;
+			case 6:
+				size = readShort(); break;
+			case 7:
+				size = readInt(); break;
+		}
+
+		System.out.println("type " + propType);
+		System.out.println("size " + size);
+		System.out.println("array " + array);
+
+		switch (propType) {
+			case FloatProperty:
+				return new FloatProperty(name, propType, readFloat());
+			case StrProperty:
+				return new StringProperty(name, propType, readString());
+		}
 
 		return null;
 	}
@@ -220,7 +334,7 @@ public class Package {
 
 		for (int i = 0; i < count; i++) {
 			if (buffer.remaining() < 256) fillBuffer(); // more-or-less
-			names[i] = readName();
+			names[i] = new Name(readString(), readInt());
 		}
 
 		return names;
@@ -269,11 +383,11 @@ public class Package {
 	}
 
 	/**
-	 * Read a single name from the current buffer position.
+	 * Read a string from the current buffer position.
 	 *
-	 * @return a new name
+	 * @return a string
 	 */
-	private Name readName() {
+	private String readString() {
 		String name = "";
 
 		if (version < 64) {
@@ -295,7 +409,7 @@ public class Package {
 			}
 		}
 
-		return new Name(name, buffer.getInt());
+		return name;
 	}
 
 	/**
@@ -335,8 +449,20 @@ public class Package {
 		return buffer.get();
 	}
 
+	private short readShort() {
+		return buffer.getShort();
+	}
+
 	private int readInt() {
 		return buffer.getInt();
+	}
+
+	private long readLong() {
+		return buffer.getLong();
+	}
+
+	private float readFloat() {
+		return buffer.getFloat();
 	}
 
 	private int readIndex() {
@@ -506,37 +632,110 @@ public class Package {
 		}
 	}
 
+	public class UnrealObjectHeader {
+
+		private final int node;
+		private final int stateNode;
+		private final long probeMask;
+		private final int latentAction;
+		private final int offset;
+
+		public UnrealObjectHeader(int node, int stateNode, long probeMask, int latentAction, int offset) {
+			this.node = node;
+			this.stateNode = stateNode;
+			this.probeMask = probeMask;
+			this.latentAction = latentAction;
+			this.offset = offset;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("UnrealObjectHeader [node=%s, stateNode=%s, probeMask=%s, latentAction=%s, offset=%s]",
+								 node, stateNode, probeMask, latentAction, offset);
+		}
+	}
+
 	public class UnrealObject {
 
 		private final Export export;
+		private final UnrealObjectHeader header;
 		private final Collection<Property> properties;
 
-		public UnrealObject(Export export, Collection<Property> properties) {
+		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Property> properties) {
 			this.export = export;
+			this.header = header;
 			this.properties = properties;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("UnrealObject [export=%s, properties=%s]", export, properties);
+			return String.format("UnrealObject [export=%s, header=%s, properties=%s]", export, header, properties);
 		}
 	}
 
-	public class Property {
+	public abstract class Property {
 
-		private final int name;
-		private final int type;
-		private final byte[] value;
+		final int name;
+		final PropertyType type;
 
-		public Property(int name, int type, byte[] value) {
+		private Property(int name, PropertyType type) {
 			this.name = name;
 			this.type = type;
-			this.value = value;
+		}
+
+		public Name name() {
+			if (name < 0) {
+				return names[(-name)];
+			} else {
+				return names[name];
+			}
+		}
+
+		public PropertyType type() {
+			return type;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("Property [name=%s, type=%s, value=%s]", name, type, value);
+			return String.format("Property [name=%s, type=%s]", name(), type());
+		}
+	}
+
+	public class FloatProperty extends Property {
+
+		private final float value;
+
+		public FloatProperty(int name, PropertyType type, float value) {
+			super(name, type);
+			this.value = value;
+		}
+
+		public float value() {
+			return value;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("FloatProperty [name=%s, type=%s, value=%s]", name, type, value);
+		}
+	}
+
+	public class StringProperty extends Property {
+
+		private final String value;
+
+		public StringProperty(int name, PropertyType type, String value) {
+			super(name, type);
+			this.value = value;
+		}
+
+		public String value() {
+			return value;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("StringProperty [name=%s, type=%s, value=%s]", name, type, value);
 		}
 	}
 }

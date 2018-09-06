@@ -23,5 +23,7 @@ public class Main {
 		if (pgk.exports()[0].objClass().get() instanceof Package.Import) {
 			System.out.println(((Package.Import)pgk.exports()[0].objClass().get()).packageName().get());
 		}
+
+		System.out.println(pgk.object(pgk.exports()[0]));
 	}
 }
