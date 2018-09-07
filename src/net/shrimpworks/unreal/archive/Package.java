@@ -14,6 +14,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static net.shrimpworks.unreal.archive.Properties.*;
+
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
 // http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format-data-de.html
 // possible reference for newer engines: http://wiki.tesnexus.com/index.php/UPK_File_Format_-_XCOM:EU_2012
@@ -30,6 +32,8 @@ public class Package {
 	private final Name[] names;
 	private final Export[] exports;
 	private final Import[] imports;
+
+	private final Name none;
 
 	public enum PackageFlag {
 		AllowDownload(0x0001),    //	Allow downloading package
@@ -100,38 +104,6 @@ public class Package {
 		}
 	}
 
-	private enum PropertyType {
-		ByteProperty((byte)1),
-		IntegerProperty((byte)2),
-		BooleanProperty((byte)3),
-		FloatProperty((byte)4),
-		ObjectProperty((byte)5),
-		NameProperty((byte)6),
-		StringProperty((byte)7),
-		ClassProperty((byte)8),
-		ArrayProperty((byte)9),
-		StructProperty((byte)10),
-		VectorProperty((byte)11),
-		RotatorProperty((byte)12),
-		StrProperty((byte)13),
-		MapProperty((byte)14),
-		FixedArrayProperty((byte)15),
-		;
-
-		private final byte type;
-
-		PropertyType(byte type) {
-			this.type = type;
-		}
-
-		private static PropertyType get(byte type) {
-			for (PropertyType p : values()) {
-				if (p.type == type) return p;
-			}
-			return null;
-		}
-	}
-
 	public Package(Path pkg) throws IOException {
 		this.channel = FileChannel.open(pkg, StandardOpenOption.READ);
 		this.buffer = ByteBuffer.allocateDirect(1024 * 8)
@@ -141,7 +113,8 @@ public class Package {
 
 		if (readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("File " + pkg + " does not seem to be an Unreal package");
 
-		this.version = readInt() & 0xFF;
+		this.version = readShort();
+		short license = readShort();
 
 		this.flags = readInt();
 
@@ -168,6 +141,8 @@ public class Package {
 		this.names = names(nameCount, namePos);
 		this.exports = exports(exportCount, exportPos);
 		this.imports = imports(importCount, importPos);
+
+		this.none = Arrays.stream(names).filter(n -> n.name().equals("None")).findFirst().orElse(null);
 	}
 
 	/**
@@ -219,14 +194,12 @@ public class Package {
 			header = null;
 		}
 
-		Name none = Arrays.stream(names).filter(n -> n.name().equals("None")).findFirst().orElse(null);
-
 		List<Property> properties = new ArrayList<>();
-		for (int i = 0; i < 3; i++) { // 256
+		for (int i = 0; i < 256; i++) {
 
 			Property p = readProperty();
 
-			if (p.name().equals(none)) break;
+			if (p.name.equals(none)) break;
 			else properties.add(p);
 		}
 
@@ -234,26 +207,38 @@ public class Package {
 	}
 
 	private Property readProperty() {
-		int name = readIndex();
+		int nameIndex = readIndex();
+		Name name = names[nameIndex];
 
 		byte propInfo = readByte();
 
+		// the end - don't read or process anything beyond here
+		if (name.equals(none)) return new NameProperty(this, name, name);
+
 		byte type = (byte)(propInfo & 0b00001111);
 		int size = (propInfo & 0b01110000) >> 4;
-		boolean array = (propInfo & 0x80) > 0;
+		int lastBit = (propInfo & 0x80);
 
 		PropertyType propType = PropertyType.get(type);
 
-		// if arrayflag is set, next is the position of the array
-		int arrayPos = 0;
-		if (array && propType != PropertyType.BooleanProperty) {
-			arrayPos = readByte();
+		if (propType == null) {
+			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name()));
 		}
 
-		// if type is a struct the next byte will be the structname, assuming this is an INDEX
-		int structName = 0;
+		// if array and not boolean, next byte is index of property within the array
+		int arrayIndex = 0;
+		if (lastBit != 0 && propType != PropertyType.BooleanProperty) {
+			arrayIndex = readByte();
+		}
+
+		// When a struct, type of struct follows before size and body
+		StructType structType = null;
 		if (propType == PropertyType.StructProperty) {
-			structName = readIndex();
+			int structIdx = readIndex();
+			structType = StructType.get(names[structIdx]);
+			if (structType == null) {
+				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name()));
+			}
 		}
 
 		switch (size) {
@@ -275,18 +260,58 @@ public class Package {
 				size = readInt(); break;
 		}
 
-		System.out.println("type " + propType);
-		System.out.println("size " + size);
-		System.out.println("array " + array);
+		return createProperty(name, propType, structType, arrayIndex, size, lastBit);
+	}
 
-		switch (propType) {
+	private Property createProperty(Name name, PropertyType type, StructType structType, int arrayIndex, int size, int flagBit) {
+
+		System.out.println("name = [" + name + "], type = [" + type + "], structType = [" + structType + "], arrayIndex = [" + arrayIndex +
+						   "], size = [" + size + "]");
+
+		switch (type) {
+			case BooleanProperty:
+				return new BooleanProperty(this, name, flagBit > 0);
+			case ByteProperty:
+				return new ByteProperty(this, name, readByte());
+			case IntegerProperty:
+				return new IntegerProperty(this, name, readInt());
 			case FloatProperty:
-				return new FloatProperty(name, propType, readFloat());
+				return new FloatProperty(this, name, readFloat());
 			case StrProperty:
-				return new StringProperty(name, propType, readString());
+				return new StringProperty(this, name, readString());
+			case NameProperty:
+				return new NameProperty(this, name, name.equals(none) ? none : names()[readIndex()]);
+			case ObjectProperty:
+				return new ObjectProperty(this, name, new ObjectReference(readIndex()));
+			case StructProperty:
+				switch (structType) {
+					case PointRegion:
+						PointRegionProperty r = new PointRegionProperty(this, name, new ObjectReference(readIndex()),
+																						  readInt(), readByte());
+						if (version >= 126) readByte(); // FIXME in UE2 (version >= ~126?), is zone number sometimes an int?
+						return r;
+					case Vector:
+						return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+					case Scale:
+						return new ScaleProperty(this, name, readFloat(), readFloat(), readFloat(), readInt(), readByte());
+					case Rotator:
+						return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+					case Color:
+						return new ColorProperty(this, name, readByte(), readByte(), readByte());
+					default:
+						throw new IllegalArgumentException("Unknown struct type " + structType);
+				}
+			case RotatorProperty:
+				return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+			case FixedArrayProperty:
+			case ArrayProperty:
+//				Properties.FixedArrayProperty arrayProperty = new Properties.FixedArrayProperty(this, name,
+//																								new ObjectReference(readIndex()),
+//																								readIndex());
+//				return arrayProperty;
+			default:
+				throw new IllegalArgumentException("FIXME " + type);
 		}
-
-		return null;
 	}
 
 	// --- buffer positioning and management
@@ -409,7 +434,7 @@ public class Package {
 			}
 		}
 
-		return name;
+		return name.trim();
 	}
 
 	/**
@@ -659,9 +684,9 @@ public class Package {
 
 		private final Export export;
 		private final UnrealObjectHeader header;
-		private final Collection<Property> properties;
+		private final Collection<Properties.Property> properties;
 
-		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Property> properties) {
+		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Properties.Property> properties) {
 			this.export = export;
 			this.header = header;
 			this.properties = properties;
@@ -673,69 +698,4 @@ public class Package {
 		}
 	}
 
-	public abstract class Property {
-
-		final int name;
-		final PropertyType type;
-
-		private Property(int name, PropertyType type) {
-			this.name = name;
-			this.type = type;
-		}
-
-		public Name name() {
-			if (name < 0) {
-				return names[(-name)];
-			} else {
-				return names[name];
-			}
-		}
-
-		public PropertyType type() {
-			return type;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("Property [name=%s, type=%s]", name(), type());
-		}
-	}
-
-	public class FloatProperty extends Property {
-
-		private final float value;
-
-		public FloatProperty(int name, PropertyType type, float value) {
-			super(name, type);
-			this.value = value;
-		}
-
-		public float value() {
-			return value;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("FloatProperty [name=%s, type=%s, value=%s]", name, type, value);
-		}
-	}
-
-	public class StringProperty extends Property {
-
-		private final String value;
-
-		public StringProperty(int name, PropertyType type, String value) {
-			super(name, type);
-			this.value = value;
-		}
-
-		public String value() {
-			return value;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("StringProperty [name=%s, type=%s, value=%s]", name, type, value);
-		}
-	}
 }
