@@ -24,9 +24,10 @@ public class Main {
 //			System.out.println(((Package.Import)pgk.exports()[0].objClass().get()).packageName().get());
 //		}
 
-//		System.out.println(pgk.object(pgk.exports()[11]));
+//		System.out.println(pgk.object(pgk.exports()[234]));
 		for (int i = 0; i < pgk.exports().length; i++) {
 			System.out.println(" >>> " + i);
+//			pgk.object(pgk.exports()[i]);
 			System.out.println(pgk.object(pgk.exports()[i]));
 		}
 	}

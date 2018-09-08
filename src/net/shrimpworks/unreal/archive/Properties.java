@@ -40,13 +40,14 @@ public interface Properties {
 		Scale,
 		PointRegion,
 		Sphere,
-		Plane;
+		Plane,
+		Unknown;
 
 		public static StructType get(Package.Name name) {
 			for (StructType s : values()) {
 				if (s.name().equalsIgnoreCase(name.name())) return s;
 			}
-			return null;
+			return Unknown;
 		}
 	}
 
@@ -237,10 +238,10 @@ public interface Properties {
 
 	public static class ScaleProperty extends VectorProperty {
 
-		public final int sheerRate;
+		public final float sheerRate;
 		public final byte sheerAxis;
 
-		public ScaleProperty(Package pkg, Package.Name name, float x, float y, float z, int sheerRate, byte sheerAxis) {
+		public ScaleProperty(Package pkg, Package.Name name, float x, float y, float z, float sheerRate, byte sheerAxis) {
 			super(pkg, name, x, y, z);
 			this.sheerRate = sheerRate;
 			this.sheerAxis = sheerAxis;
@@ -258,17 +259,19 @@ public interface Properties {
 		public final byte r;
 		public final byte g;
 		public final byte b;
+		public final byte a;
 
-		public ColorProperty(Package pkg, Package.Name name, byte r, byte g, byte b) {
+		public ColorProperty(Package pkg, Package.Name name, byte r, byte g, byte b, byte a) {
 			super(pkg, name);
 			this.r = r;
 			this.g = g;
 			this.b = b;
+			this.a = a;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("ColorProperty [name=%s, r=%s, g=%s, b=%s]", name, r, g, b);
+			return String.format("ColorProperty [name=%s, r=%s, g=%s, b=%s, a=%s]", name, r, g, b, a);
 		}
 	}
 
@@ -301,28 +304,40 @@ public interface Properties {
 		}
 	}
 
-	public static class FixedArrayProperty extends Property {
+	public static class ArrayProperty extends Property {
 
-		private final Package.ObjectReference arrayType;
-		private final int count;
+		public final Package.ObjectReference arrayType;
 
-		public FixedArrayProperty(Package pkg, Package.Name name, Package.ObjectReference arrayType, int count) {
+		public ArrayProperty(Package pkg, Package.Name name, Package.ObjectReference arrayType) {
 			super(pkg, name);
 			this.arrayType = arrayType;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("ArrayProperty [name=%s, arrayType=%s]", name, arrayType);
+		}
+	}
+
+	public static class FixedArrayProperty extends ArrayProperty {
+
+		public final int count;
+
+		public FixedArrayProperty(Package pkg, Package.Name name, Package.ObjectReference arrayType, int count) {
+			super(pkg, name, arrayType);
 			this.count = count;
-		}
-
-		public Package.ObjectReference arrayType() {
-			return arrayType;
-		}
-
-		public int count() {
-			return count;
 		}
 
 		@Override
 		public String toString() {
 			return String.format("FixedArrayProperty [name=%s, arrayType=%s, count=%s]", name, arrayType, count);
+		}
+	}
+
+	public static class UnknownStructProperty extends StructProperty {
+
+		public UnknownStructProperty(Package pkg, Package.Name name) {
+			super(pkg, name);
 		}
 	}
 }

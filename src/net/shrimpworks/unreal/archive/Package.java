@@ -23,6 +23,8 @@ public class Package {
 
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;
 
+	private static final int MAX_PROPERTIES = 256;
+
 	private final FileChannel channel;
 	private final ByteBuffer buffer;
 
@@ -179,8 +181,6 @@ public class Package {
 	public UnrealObject object(Export export) throws IOException {
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
 
-		System.out.println(export);
-
 		moveTo(export.pos);
 
 		UnrealObjectHeader header;
@@ -195,7 +195,7 @@ public class Package {
 		}
 
 		List<Property> properties = new ArrayList<>();
-		for (int i = 0; i < 256; i++) {
+		for (int i = 0; i < MAX_PROPERTIES; i++) {
 
 			Property p = readProperty();
 
@@ -215,9 +215,9 @@ public class Package {
 		// the end - don't read or process anything beyond here
 		if (name.equals(none)) return new NameProperty(this, name, name);
 
-		byte type = (byte)(propInfo & 0b00001111);
-		int size = (propInfo & 0b01110000) >> 4;
-		int lastBit = (propInfo & 0x80);
+		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
+		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
+		int lastBit = (propInfo & 0x80); // bit 7 is either array size, or boolean value
 
 		PropertyType propType = PropertyType.get(type);
 
@@ -266,51 +266,62 @@ public class Package {
 	private Property createProperty(Name name, PropertyType type, StructType structType, int arrayIndex, int size, int flagBit) {
 
 		System.out.println("name = [" + name + "], type = [" + type + "], structType = [" + structType + "], arrayIndex = [" + arrayIndex +
-						   "], size = [" + size + "]");
+						   "], size = [" + size + "], flagBit = [" + flagBit + "]");
 
-		switch (type) {
-			case BooleanProperty:
-				return new BooleanProperty(this, name, flagBit > 0);
-			case ByteProperty:
-				return new ByteProperty(this, name, readByte());
-			case IntegerProperty:
-				return new IntegerProperty(this, name, readInt());
-			case FloatProperty:
-				return new FloatProperty(this, name, readFloat());
-			case StrProperty:
-				return new StringProperty(this, name, readString());
-			case NameProperty:
-				return new NameProperty(this, name, name.equals(none) ? none : names()[readIndex()]);
-			case ObjectProperty:
-				return new ObjectProperty(this, name, new ObjectReference(readIndex()));
-			case StructProperty:
-				switch (structType) {
-					case PointRegion:
-						PointRegionProperty r = new PointRegionProperty(this, name, new ObjectReference(readIndex()),
-																						  readInt(), readByte());
-						if (version >= 126) readByte(); // FIXME in UE2 (version >= ~126?), is zone number sometimes an int?
-						return r;
-					case Vector:
-						return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
-					case Scale:
-						return new ScaleProperty(this, name, readFloat(), readFloat(), readFloat(), readInt(), readByte());
-					case Rotator:
-						return new RotatorProperty(this, name, readInt(), readInt(), readInt());
-					case Color:
-						return new ColorProperty(this, name, readByte(), readByte(), readByte());
-					default:
-						throw new IllegalArgumentException("Unknown struct type " + structType);
-				}
-			case RotatorProperty:
-				return new RotatorProperty(this, name, readInt(), readInt(), readInt());
-			case FixedArrayProperty:
-			case ArrayProperty:
-//				Properties.FixedArrayProperty arrayProperty = new Properties.FixedArrayProperty(this, name,
-//																								new ObjectReference(readIndex()),
-//																								readIndex());
-//				return arrayProperty;
-			default:
-				throw new IllegalArgumentException("FIXME " + type);
+		int startPos = buffer.position();
+
+		try {
+			switch (type) {
+				case BooleanProperty:
+					return new BooleanProperty(this, name, flagBit > 0);
+				case ByteProperty:
+					return new ByteProperty(this, name, readByte());
+				case IntegerProperty:
+					return new IntegerProperty(this, name, readInt());
+				case FloatProperty:
+					return new FloatProperty(this, name, readFloat());
+				case StrProperty:
+				case StringProperty:
+					return new StringProperty(this, name, readString());
+				case NameProperty:
+					return new NameProperty(this, name, name.equals(none) ? none : names()[readIndex()]);
+				case ObjectProperty:
+					return new ObjectProperty(this, name, new ObjectReference(readIndex()));
+				case StructProperty:
+					switch (structType) {
+						case PointRegion:
+							return new PointRegionProperty(this, name, new ObjectReference(readIndex()), readInt(), readByte());
+						case Vector:
+							return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+						case Scale:
+							return new ScaleProperty(this, name, readFloat(), readFloat(), readFloat(), readFloat(), readByte());
+						case Rotator:
+							return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+						case Color:
+							return new ColorProperty(this, name, readByte(), readByte(), readByte(), readByte());
+						default:
+							// unknown struct, but perhaps we can assume it to be a vector at least
+							if (size == 12) return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+							return new UnknownStructProperty(this, name);
+					}
+				case RotatorProperty:
+					return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+				case VectorProperty:
+					return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+				case ArrayProperty:
+					return new ArrayProperty(this, name, new ObjectReference(readIndex()));
+				case FixedArrayProperty:
+					return new Properties.FixedArrayProperty(this, name, new ObjectReference(readIndex()), readIndex());
+				default:
+					throw new IllegalArgumentException("FIXME " + type);
+			}
+		} finally {
+			if (buffer.position() - startPos < size) {
+				// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
+				System.out.printf("read %d bytes short%n", size - (buffer.position() - startPos));
+				// FIXME doesn't move past large sizes within buffer
+				buffer.position(startPos + size);
+			}
 		}
 	}
 
