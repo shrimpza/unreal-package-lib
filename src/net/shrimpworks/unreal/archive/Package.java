@@ -37,6 +37,19 @@ public class Package {
 
 	private final Name none;
 
+	public interface Named {
+
+		public static Named NULL = new Named() {
+
+			@Override
+			public Name name() {
+				return new Name("Null", 0);
+			}
+		};
+
+		public Name name();
+	}
+
 	public enum PackageFlag {
 		AllowDownload(0x0001),    //	Allow downloading package
 		ClientOptional(0x0002),   //	Purely optional for clients
@@ -311,7 +324,7 @@ public class Package {
 				case ArrayProperty:
 					return new ArrayProperty(this, name, new ObjectReference(readIndex()));
 				case FixedArrayProperty:
-					return new Properties.FixedArrayProperty(this, name, new ObjectReference(readIndex()), readIndex());
+					return new FixedArrayProperty(this, name, new ObjectReference(readIndex()), readIndex());
 				default:
 					throw new IllegalArgumentException("FIXME " + type);
 			}
@@ -588,13 +601,13 @@ public class Package {
 			this.index = index;
 		}
 
-		public Object get() {
+		public Named get() {
 			if (index < 0) {
 				return imports[(-index) - 1];
 			} else if (index > 0) {
 				return exports[index - 1];
 			} else {
-				return null;
+				return Named.NULL;
 			}
 		}
 
@@ -604,7 +617,7 @@ public class Package {
 		}
 	}
 
-	public static class Export {
+	public static class Export implements Named {
 
 		public final ObjectReference objClass;
 		public final ObjectReference objSuper;
@@ -625,6 +638,11 @@ public class Package {
 			this.pos = pos;
 		}
 
+		@Override
+		public Name name() {
+			return name;
+		}
+
 		public EnumSet<ObjectFlag> flags() {
 			return ObjectFlag.fromFlags(flags);
 		}
@@ -636,7 +654,7 @@ public class Package {
 		}
 	}
 
-	public static class Import {
+	public static class Import implements Named {
 
 		public final Name file;
 		public final Name className;
@@ -648,6 +666,11 @@ public class Package {
 			this.className = className;
 			this.packageName = packageName;
 			this.name = name;
+		}
+
+		@Override
+		public Name name() {
+			return name;
 		}
 
 		@Override
@@ -681,14 +704,23 @@ public class Package {
 
 	public static class UnrealObject {
 
-		private final Export export;
-		private final UnrealObjectHeader header;
-		private final Collection<Properties.Property> properties;
+		public final Export export;
+		public final UnrealObjectHeader header;
+		public final Collection<Property> properties;
 
-		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Properties.Property> properties) {
+		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Property> properties) {
 			this.export = export;
 			this.header = header;
 			this.properties = properties;
+		}
+
+		public Property property(String propertyName) {
+			for (Property p : properties) {
+				if (p.name.name.equals(propertyName)) {
+					return p;
+				}
+			}
+			return null;
 		}
 
 		@Override

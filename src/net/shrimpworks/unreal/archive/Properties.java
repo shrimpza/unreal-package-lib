@@ -51,7 +51,7 @@ public interface Properties {
 		}
 	}
 
-	public static abstract class Property {
+	public static abstract class Property implements Package.Named {
 
 		final Package pkg;
 		public final Package.Name name;
@@ -59,6 +59,11 @@ public interface Properties {
 		private Property(Package pkg, Package.Name name) {
 			this.pkg = pkg;
 			this.name = name;
+		}
+
+		@Override
+		public Package.Name name() {
+			return name;
 		}
 
 		@Override
