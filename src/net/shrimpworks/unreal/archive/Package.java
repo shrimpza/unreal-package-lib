@@ -380,7 +380,6 @@ public class Package {
 	 * and fill the buffer with data from that point on.
 	 *
 	 * @param amount amount to move forward by
-	 * @throws IOException
 	 */
 	void moveRelative(int amount) {
 		// FIXME move channel position rather than just moving the buffer repeatedly
@@ -407,6 +406,19 @@ public class Package {
 			buffer.flip();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read from package file", e);
+		}
+	}
+
+	/**
+	 * Get the current read position within the file.
+	 *
+	 * @return position
+	 */
+	int currentPosition() {
+		try {
+			return (int)(channel.position() - buffer.remaining());
+		} catch (IOException e) {
+			throw new IllegalStateException("Coult not determine current file position");
 		}
 	}
 
@@ -561,6 +573,12 @@ public class Package {
 
 	float readFloat() {
 		return buffer.getFloat();
+	}
+
+	int readBytes(byte[] dest, int offset, int length) {
+		int start = buffer.remaining();
+		buffer.get(dest, offset, Math.min(buffer.remaining(), length));
+		return start - buffer.remaining();
 	}
 
 	int readIndex() {

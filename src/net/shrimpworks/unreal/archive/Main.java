@@ -1,9 +1,12 @@
 package net.shrimpworks.unreal.archive;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
+import javax.imageio.ImageIO;
 
 public class Main {
 
@@ -48,6 +51,9 @@ public class Main {
 			Objects.TextureObject obj = (Objects.TextureObject)tex.object();
 			Objects.TextureObject.MipMap[] mipMaps = obj.mipMaps();
 			System.out.println(Arrays.toString(mipMaps));
+
+			BufferedImage bufferedImage = mipMaps[0].get();
+			ImageIO.write(bufferedImage, "jpg", new File("/tmp/img.jpg"));
 		}
 
 		// read level info (also in LevelSummary, but missing Screenshot)

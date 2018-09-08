@@ -1,6 +1,7 @@
 package net.shrimpworks.unreal.archive;
 
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.util.Collection;
 
 public interface Objects {
@@ -75,8 +76,18 @@ public interface Objects {
 			MipMap[] mips = new MipMap[mipCount];
 
 			for (int i = 0; i < mipCount; i++) {
-				int widthOffset = pkg.readInt();
+
+				int widthOffset = 0;
+				if (pkg.version >= 63) {
+					widthOffset = pkg.readInt();
+				}
+
 				int size = pkg.readIndex();
+
+				// infer widthOffset for older versions; probably not even needed :|
+				if (pkg.version < 63) {
+					widthOffset = pkg.currentPosition() + size;
+				}
 
 				// skip over the image content - mipmap class can return it on demand
 				pkg.moveRelative(size);
@@ -91,6 +102,19 @@ public interface Objects {
 			}
 
 			return mips;
+		}
+
+		private byte[] readImage(MipMap mip) {
+			pkg.moveTo(mip.widthOffset - mip.size);
+			byte[] data = new byte[mip.size];
+			int pos = 0;
+
+			while (pos < mip.size) {
+				pos += pkg.readBytes(data, pos, mip.size - pos);
+				pkg.fillBuffer();
+			}
+
+			return data;
 		}
 
 		public class MipMap {
@@ -120,8 +144,15 @@ public interface Objects {
 			}
 
 			public BufferedImage get() {
-				// TODO
-				return null;
+				// FIXME read texture properties, look for "Format", support P8 or DXT1
+				// FIXME read Pallet from properties
+				// see https://github.com/acmi/l2tool/blob/master/src/main/java/acmi/l2/clientmod/l2tool/img/P8.java
+				byte[] data = texture.readImage(this);
+				BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED);
+				System.arraycopy(data, 0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData(), 0, data.length);
+
+				return image;
+
 			}
 		}
 	}
