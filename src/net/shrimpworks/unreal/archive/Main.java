@@ -2,15 +2,16 @@ package net.shrimpworks.unreal.archive;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collection;
 
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
-		Package pkg = new Package(Paths.get("/home/shrimp/tmp/MonsterHunt.u"));
+		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/MonsterHunt.u"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
-		System.out.printf("Package version: %d%n", pkg.version());
+		System.out.printf("Package version: %d%n", pkg.version);
 
 //		System.out.println(pkg.exports()[0]);
 //		System.out.println(pkg.object(pkg.exports()[0]));
@@ -40,8 +41,16 @@ public class Main {
 //		System.out.println(((Package.Export)((Properties.ObjectProperty)screenshot).value.get()).objClass.get());
 
 		// try to find all textures in exports
-		for (Package.Export export : pkg.exports()) {
-			System.out.println(export.objClass.get().name());
+		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
+		for (Package.Export tex : textures) {
+			System.out.println(tex.object());
 		}
+
+		Package.Export levelInfo = pkg.exportsByClassName("LevelInfo").iterator().next();
+		System.out.println(levelInfo.object().property("Author"));
+		System.out.println(levelInfo.object().property("Title"));
+		System.out.println(levelInfo.object().property("Screenshot"));
+
+//		System.out.println(pkg.exports[0].object());
 	}
 }

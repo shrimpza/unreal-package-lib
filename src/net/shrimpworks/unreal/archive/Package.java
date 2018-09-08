@@ -11,7 +11,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
 import static net.shrimpworks.unreal.archive.Properties.*;
@@ -28,24 +31,32 @@ public class Package {
 	private final FileChannel channel;
 	private final ByteBuffer buffer;
 
-	private final int version;
-	private final int flags;
+	/**
+	 * Package file version.
+	 *
+	 * <ul>
+	 * <li><= 68 Unreal</li>
+	 * <li>>= 69 Unreal Tournament</li>
+	 * <li>>= 100 UE2 (UT2003/4)</li>
+	 * </ul>
+	 *
+	 * @return package version
+	 */
+	public final int version;
+	public final int flags;
 
-	private final Name[] names;
-	private final Export[] exports;
-	private final Import[] imports;
+	public final Name[] names;
+	public final Export[] exports;
+	public final Import[] imports;
+
+	// cache of already-parsed/read objects, simply keyed by file position
+	private final WeakHashMap<Integer, UnrealObject> loadedObjects;
 
 	private final Name none;
 
 	public interface Named {
 
-		public static Named NULL = new Named() {
-
-			@Override
-			public Name name() {
-				return new Name("Null", 0);
-			}
-		};
+		public static Named NULL = () -> new Name("Null", 0);
 
 		public Name name();
 	}
@@ -157,44 +168,37 @@ public class Package {
 		this.exports = exports(exportCount, exportPos);
 		this.imports = imports(importCount, importPos);
 
+		this.loadedObjects = new WeakHashMap<>();
+
 		this.none = Arrays.stream(names).filter(n -> n.name.equals("None")).findFirst().orElse(null);
-	}
-
-	/**
-	 * Package file version.
-	 *
-	 * <ul>
-	 * <li><= 68 Unreal</li>
-	 * <li>>= 69 Unreal Tournament</li>
-	 * <li>>= ~126 UT2004</li>
-	 * </ul>
-	 *
-	 * @return package version
-	 */
-	public int version() {
-		return version;
-	}
-
-	public Name[] names() {
-		return names;
-	}
-
-	public Export[] exports() {
-		return exports;
-	}
-
-	public Import[] imports() {
-		return imports;
 	}
 
 	public EnumSet<PackageFlag> flags() {
 		return PackageFlag.fromFlags(flags);
 	}
 
-	public UnrealObject object(Export export) throws IOException {
+	public Collection<Export> exportsByClassName(String className) {
+		Set<Export> exports = new HashSet<>();
+		for (Export ex : this.exports) {
+			Named type = ex.objClass.get();
+			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
+				exports.add(ex);
+			}
+		}
+		return exports;
+	}
+
+	private UnrealObject object(Export export) {
+		UnrealObject existing = loadedObjects.get(export.pos);
+		if (existing != null) return existing;
+
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
 
-		moveTo(export.pos);
+		try {
+			moveTo(export.pos);
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to move to object location in package", e);
+		}
 
 		UnrealObjectHeader header;
 		if (export.flags().contains(ObjectFlag.HasStack)) {
@@ -216,7 +220,11 @@ public class Package {
 			else properties.add(p);
 		}
 
-		return new UnrealObject(export, header, properties);
+		UnrealObject newObject = new UnrealObject(export, header, properties);
+
+		loadedObjects.put(export.pos, newObject);
+
+		return newObject;
 	}
 
 	private Property readProperty() {
@@ -278,8 +286,8 @@ public class Package {
 
 	private Property createProperty(Name name, PropertyType type, StructType structType, int arrayIndex, int size, int flagBit) {
 
-		System.out.println("name = [" + name + "], type = [" + type + "], structType = [" + structType + "], arrayIndex = [" + arrayIndex +
-						   "], size = [" + size + "], flagBit = [" + flagBit + "]");
+//		System.out.println("name = [" + name + "], type = [" + type + "], structType = [" + structType + "], arrayIndex = [" + arrayIndex +
+//						   "], size = [" + size + "], flagBit = [" + flagBit + "]");
 
 		int startPos = buffer.position();
 
@@ -297,7 +305,7 @@ public class Package {
 				case StringProperty:
 					return new StringProperty(this, name, readString());
 				case NameProperty:
-					return new NameProperty(this, name, name.equals(none) ? none : names()[readIndex()]);
+					return new NameProperty(this, name, name.equals(none) ? none : names[readIndex()]);
 				case ObjectProperty:
 					return new ObjectProperty(this, name, new ObjectReference(readIndex()));
 				case StructProperty:
@@ -497,6 +505,7 @@ public class Package {
 	 */
 	private Export readExport() {
 		return new Export(
+				this,
 				new ObjectReference(readIndex()), // class
 				new ObjectReference(readIndex()), // super
 				new ObjectReference(readInt()),   // group
@@ -597,7 +606,7 @@ public class Package {
 
 		private final int index;
 
-		public ObjectReference(int index) {
+		private ObjectReference(int index) {
 			this.index = index;
 		}
 
@@ -619,6 +628,8 @@ public class Package {
 
 	public static class Export implements Named {
 
+		private final Package pkg;
+
 		public final ObjectReference objClass;
 		public final ObjectReference objSuper;
 		public final ObjectReference objGroup;
@@ -628,7 +639,9 @@ public class Package {
 		public final int pos;
 
 		private Export(
-				ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size, int pos) {
+				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup,
+				Name name, int flags, int size, int pos) {
+			this.pkg = pkg;
 			this.objClass = objClass;
 			this.objSuper = objSuper;
 			this.objGroup = objGroup;
@@ -641,6 +654,10 @@ public class Package {
 		@Override
 		public Name name() {
 			return name;
+		}
+
+		public UnrealObject object() {
+			return pkg.object(this);
 		}
 
 		public EnumSet<ObjectFlag> flags() {
