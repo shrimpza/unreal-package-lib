@@ -45,7 +45,7 @@ public interface Properties {
 
 		public static StructType get(Package.Name name) {
 			for (StructType s : values()) {
-				if (s.name().equalsIgnoreCase(name.name())) return s;
+				if (s.name().equalsIgnoreCase(name.name)) return s;
 			}
 			return Unknown;
 		}

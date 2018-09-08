@@ -144,7 +144,7 @@ public class Package {
 		this.exports = exports(exportCount, exportPos);
 		this.imports = imports(importCount, importPos);
 
-		this.none = Arrays.stream(names).filter(n -> n.name().equals("None")).findFirst().orElse(null);
+		this.none = Arrays.stream(names).filter(n -> n.name.equals("None")).findFirst().orElse(null);
 	}
 
 	/**
@@ -222,7 +222,7 @@ public class Package {
 		PropertyType propType = PropertyType.get(type);
 
 		if (propType == null) {
-			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name()));
+			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name));
 		}
 
 		// if array and not boolean, next byte is index of property within the array
@@ -237,7 +237,7 @@ public class Package {
 			int structIdx = readIndex();
 			structType = StructType.get(names[structIdx]);
 			if (structType == null) {
-				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name()));
+				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name));
 			}
 		}
 
@@ -318,9 +318,12 @@ public class Package {
 		} finally {
 			if (buffer.position() - startPos < size) {
 				// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
-				System.out.printf("read %d bytes short%n", size - (buffer.position() - startPos));
-				// FIXME doesn't move past large sizes within buffer
-				buffer.position(startPos + size);
+				// this also lets move past array payloads without consuming them yet
+				try {
+					moveRelative(size - (buffer.position() - startPos));
+				} catch (IOException e) {
+					throw new IllegalStateException(String.format("Failed to move past property %s payload of %db", name.name, size));
+				}
 			}
 		}
 	}
@@ -333,12 +336,34 @@ public class Package {
 	 * @param pos position in file
 	 * @throws IOException io failure
 	 */
-	private void moveTo(int pos) throws IOException {
+	private void moveTo(long pos) throws IOException {
 		channel.position(pos);
 
 		buffer.clear();
 		channel.read(buffer);
 		buffer.flip();
+	}
+
+	/**
+	 * @param amount
+	 * @throws IOException
+	 */
+	private void moveRelative(int amount) throws IOException {
+		// FIXME move channel position rather than just moving the buffer repeatedly
+		int bypass = amount;
+		while (bypass > 0) {
+			if (!buffer.hasRemaining()) {
+				try {
+					fillBuffer();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			int chunk = Math.min(buffer.remaining(), bypass);
+			buffer.position(buffer.position() + chunk);
+			bypass -= chunk;
+		}
+		fillBuffer();
 	}
 
 	/**
@@ -385,6 +410,8 @@ public class Package {
 	 * @throws IOException io failure
 	 */
 	private Export[] exports(int count, int pos) throws IOException {
+		assert names != null && names.length > 0;
+
 		Export[] exports = new Export[count];
 
 		moveTo(pos);
@@ -406,6 +433,8 @@ public class Package {
 	 * @throws IOException io failure
 	 */
 	private Import[] imports(int count, int pos) throws IOException {
+		assert names != null && names.length > 0;
+
 		Import[] imports = new Import[count];
 
 		moveTo(pos);
@@ -458,7 +487,7 @@ public class Package {
 				new ObjectReference(readIndex()), // class
 				new ObjectReference(readIndex()), // super
 				new ObjectReference(readInt()),   // group
-				readIndex(), // name
+				names[readIndex()], // name
 				readInt(),   // flags
 				readIndex(), // size
 				readIndex()  // pos
@@ -472,10 +501,10 @@ public class Package {
 	 */
 	private Import readImport() {
 		return new Import(
-				readIndex(), // package file
-				readIndex(), // class
+				names[readIndex()], // package file
+				names[readIndex()], // class
 				new ObjectReference(readInt()),   // package name
-				readIndex()  // name
+				names[readIndex()]  // name
 		);
 	}
 
@@ -531,18 +560,14 @@ public class Package {
 
 	// --- exposed classes
 
-	public class Name {
+	public static class Name {
 
-		private final String name;
-		private final int flags;
+		public final String name;
+		public final int flags;
 
 		private Name(String name, int flags) {
 			this.name = name;
 			this.flags = flags;
-		}
-
-		public String name() {
-			return name;
 		}
 
 		public EnumSet<ObjectFlag> flags() {
@@ -551,7 +576,7 @@ public class Package {
 
 		@Override
 		public String toString() {
-			return String.format("Name [name=%s, flags=%s]", name, flags);
+			return String.format("Name [name=%s, flags=%s]", name, flags());
 		}
 	}
 
@@ -579,18 +604,18 @@ public class Package {
 		}
 	}
 
-	public class Export {
+	public static class Export {
 
-		private final ObjectReference objClass;
-		private final ObjectReference objSuper;
-		private final ObjectReference objGroup;
-		private final int name;
-		private final int flags;
-		private final int size;
-		private final int pos;
+		public final ObjectReference objClass;
+		public final ObjectReference objSuper;
+		public final ObjectReference objGroup;
+		public final Name name;
+		public final int flags;
+		public final int size;
+		public final int pos;
 
 		private Export(
-				ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, int name, int flags, int size, int pos) {
+				ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size, int pos) {
 			this.objClass = objClass;
 			this.objSuper = objSuper;
 			this.objGroup = objGroup;
@@ -604,41 +629,21 @@ public class Package {
 			return ObjectFlag.fromFlags(flags);
 		}
 
-		public ObjectReference objClass() {
-			return objClass;
-		}
-
-		public ObjectReference objSuper() {
-			return objSuper;
-		}
-
-		public ObjectReference objGroup() {
-			return objGroup;
-		}
-
-		public Name name() {
-			return names[name];
-		}
-
-		public int size() {
-			return size;
-		}
-
 		@Override
 		public String toString() {
 			return String.format("Export [objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-								 objClass(), objSuper(), objGroup(), name(), flags(), size(), pos);
+								 objClass, objSuper, objGroup, name, flags(), size, pos);
 		}
 	}
 
-	public class Import {
+	public static class Import {
 
-		private final int file;
-		private final int className;
-		private final ObjectReference packageName;
-		private final int name;
+		public final Name file;
+		public final Name className;
+		public final ObjectReference packageName;
+		public final Name name;
 
-		private Import(int file, int className, ObjectReference packageName, int name) {
+		private Import(Name file, Name className, ObjectReference packageName, Name name) {
 			this.file = file;
 			this.className = className;
 			this.packageName = packageName;
@@ -647,28 +652,11 @@ public class Package {
 
 		@Override
 		public String toString() {
-			return String.format("Import [file=%s, className=%s, packageName=%s, name=%s]",
-								 file(), className(), packageName(), name());
-		}
-
-		public Name file() {
-			return names[file];
-		}
-
-		public Name className() {
-			return names[className];
-		}
-
-		public ObjectReference packageName() {
-			return packageName;
-		}
-
-		public Name name() {
-			return names[name];
+			return String.format("Import [file=%s, className=%s, packageName=%s, name=%s]", file, className, packageName, name);
 		}
 	}
 
-	public class UnrealObjectHeader {
+	public static class UnrealObjectHeader {
 
 		private final int node;
 		private final int stateNode;
@@ -691,7 +679,7 @@ public class Package {
 		}
 	}
 
-	public class UnrealObject {
+	public static class UnrealObject {
 
 		private final Export export;
 		private final UnrealObjectHeader header;
