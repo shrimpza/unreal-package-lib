@@ -50,7 +50,7 @@ public class Package {
 	public final Import[] imports;
 
 	// cache of already-parsed/read objects, simply keyed by file position
-	private final WeakHashMap<Integer, UnrealObject> loadedObjects;
+	private final WeakHashMap<Integer, Objects.Object> loadedObjects;
 
 	private final Name none;
 
@@ -188,22 +188,18 @@ public class Package {
 		return exports;
 	}
 
-	private UnrealObject object(Export export) {
-		UnrealObject existing = loadedObjects.get(export.pos);
+	private Objects.Object object(Export export) {
+		Objects.Object existing = loadedObjects.get(export.pos);
 		if (existing != null) return existing;
 
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
 
-		try {
-			moveTo(export.pos);
-		} catch (IOException e) {
-			throw new IllegalStateException("Unable to move to object location in package", e);
-		}
+		moveTo(export.pos);
 
-		UnrealObjectHeader header;
+		Objects.ObjectHeader header;
 		if (export.flags().contains(ObjectFlag.HasStack)) {
 			int node = readIndex();
-			header = new UnrealObjectHeader(
+			header = new Objects.ObjectHeader(
 					node, readIndex(), readLong(), readInt(),
 					node != 0 ? readIndex() : 0
 			);
@@ -213,14 +209,29 @@ public class Package {
 
 		List<Property> properties = new ArrayList<>();
 		for (int i = 0; i < MAX_PROPERTIES; i++) {
-
 			Property p = readProperty();
 
 			if (p.name.equals(none)) break;
 			else properties.add(p);
 		}
 
-		UnrealObject newObject = new UnrealObject(export, header, properties);
+		// keep track of how long the properties were, so we can potentially continue reading object data from this point
+		long propsLength = 0;
+		try {
+			propsLength = channel.position() - buffer.remaining();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		Named type = export.objClass.get();
+		Objects.Object newObject;
+
+		// FIXME just testing; define these as enum types probable, with factories
+		if (type instanceof Import && ((Import)type).name.name.equals("Texture")) {
+			newObject = new Objects.TextureObject(this, export, header, properties, (int)propsLength);
+		} else {
+			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
+		}
 
 		loadedObjects.put(export.pos, newObject);
 
@@ -231,10 +242,10 @@ public class Package {
 		int nameIndex = readIndex();
 		Name name = names[nameIndex];
 
-		byte propInfo = readByte();
-
 		// the end - don't read or process anything beyond here
 		if (name.equals(none)) return new NameProperty(this, name, name);
+
+		byte propInfo = readByte();
 
 		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
 		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
@@ -340,11 +351,7 @@ public class Package {
 			if (buffer.position() - startPos < size) {
 				// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
 				// this also lets move past array payloads without consuming them yet
-				try {
-					moveRelative(size - (buffer.position() - startPos));
-				} catch (IOException e) {
-					throw new IllegalStateException(String.format("Failed to move past property %s payload of %db", name.name, size));
-				}
+				moveRelative(size - (buffer.position() - startPos));
 			}
 		}
 	}
@@ -355,30 +362,32 @@ public class Package {
 	 * Move to a position in the file, clear the buffer, and read from there.
 	 *
 	 * @param pos position in file
-	 * @throws IOException io failure
 	 */
-	private void moveTo(long pos) throws IOException {
-		channel.position(pos);
+	void moveTo(long pos) {
+		try {
+			channel.position(pos);
 
-		buffer.clear();
-		channel.read(buffer);
-		buffer.flip();
+			buffer.clear();
+			channel.read(buffer);
+			buffer.flip();
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not move to position " + pos + " within package file", e);
+		}
 	}
 
 	/**
-	 * @param amount
+	 * Move to a position in the file, relative to the current position,
+	 * and fill the buffer with data from that point on.
+	 *
+	 * @param amount amount to move forward by
 	 * @throws IOException
 	 */
-	private void moveRelative(int amount) throws IOException {
+	void moveRelative(int amount) {
 		// FIXME move channel position rather than just moving the buffer repeatedly
 		int bypass = amount;
 		while (bypass > 0) {
 			if (!buffer.hasRemaining()) {
-				try {
-					fillBuffer();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				fillBuffer();
 			}
 			int chunk = Math.min(buffer.remaining(), bypass);
 			buffer.position(buffer.position() + chunk);
@@ -390,13 +399,15 @@ public class Package {
 	/**
 	 * Read more data from the current position in the file, retaining unread
 	 * bytes in the buffer.
-	 *
-	 * @throws IOException io failure
 	 */
-	private void fillBuffer() throws IOException {
-		buffer.compact();
-		channel.read(buffer);
-		buffer.flip();
+	void fillBuffer() {
+		try {
+			buffer.compact();
+			channel.read(buffer);
+			buffer.flip();
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not read from package file", e);
+		}
 	}
 
 	// --- primary data table readers
@@ -532,27 +543,27 @@ public class Package {
 
 	// --- convenience
 
-	private byte readByte() {
+	byte readByte() {
 		return buffer.get();
 	}
 
-	private short readShort() {
+	short readShort() {
 		return buffer.getShort();
 	}
 
-	private int readInt() {
+	int readInt() {
 		return buffer.getInt();
 	}
 
-	private long readLong() {
+	long readLong() {
 		return buffer.getLong();
 	}
 
-	private float readFloat() {
+	float readFloat() {
 		return buffer.getFloat();
 	}
 
-	private int readIndex() {
+	int readIndex() {
 		boolean negative = false;
 		int num = 0;
 		int len = 6;
@@ -656,7 +667,7 @@ public class Package {
 			return name;
 		}
 
-		public UnrealObject object() {
+		public Objects.Object object() {
 			return pkg.object(this);
 		}
 
@@ -693,56 +704,6 @@ public class Package {
 		@Override
 		public String toString() {
 			return String.format("Import [file=%s, className=%s, packageName=%s, name=%s]", file, className, packageName, name);
-		}
-	}
-
-	public static class UnrealObjectHeader {
-
-		private final int node;
-		private final int stateNode;
-		private final long probeMask;
-		private final int latentAction;
-		private final int offset;
-
-		public UnrealObjectHeader(int node, int stateNode, long probeMask, int latentAction, int offset) {
-			this.node = node;
-			this.stateNode = stateNode;
-			this.probeMask = probeMask;
-			this.latentAction = latentAction;
-			this.offset = offset;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("UnrealObjectHeader [node=%s, stateNode=%s, probeMask=%s, latentAction=%s, offset=%s]",
-								 node, stateNode, probeMask, latentAction, offset);
-		}
-	}
-
-	public static class UnrealObject {
-
-		public final Export export;
-		public final UnrealObjectHeader header;
-		public final Collection<Property> properties;
-
-		public UnrealObject(Export export, UnrealObjectHeader header, Collection<Property> properties) {
-			this.export = export;
-			this.header = header;
-			this.properties = properties;
-		}
-
-		public Property property(String propertyName) {
-			for (Property p : properties) {
-				if (p.name.name.equals(propertyName)) {
-					return p;
-				}
-			}
-			return null;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("UnrealObject [export=%s, header=%s, properties=%s]", export, header, properties);
 		}
 	}
 

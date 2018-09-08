@@ -2,6 +2,7 @@ package net.shrimpworks.unreal.archive;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 
 public class Main {
@@ -26,6 +27,7 @@ public class Main {
 //			System.out.println(((Package.Import)pkg.exports()[0].objClass().get()).packageName().get());
 //		}
 
+		// read all objects' properties
 //		System.out.println(pkg.object(pkg.exports()[234]));
 //		for (int i = 0; i < pkg.exports().length; i++) {
 //			System.out.println(" >>> " + i);
@@ -43,14 +45,16 @@ public class Main {
 		// try to find all textures in exports
 		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
 		for (Package.Export tex : textures) {
-			System.out.println(tex.object());
+			Objects.TextureObject obj = (Objects.TextureObject)tex.object();
+			Objects.TextureObject.MipMap[] mipMaps = obj.mipMaps();
+			System.out.println(Arrays.toString(mipMaps));
 		}
 
-		Package.Export levelInfo = pkg.exportsByClassName("LevelInfo").iterator().next();
-		System.out.println(levelInfo.object().property("Author"));
-		System.out.println(levelInfo.object().property("Title"));
-		System.out.println(levelInfo.object().property("Screenshot"));
+		// read level info (also in LevelSummary, but missing Screenshot)
+//		Package.Export levelInfo = pkg.exportsByClassName("LevelInfo").iterator().next();
+//		System.out.println(levelInfo.object().property("Author"));
+//		System.out.println(levelInfo.object().property("Title"));
+//		System.out.println(levelInfo.object().property("Screenshot"));
 
-//		System.out.println(pkg.exports[0].object());
 	}
 }
