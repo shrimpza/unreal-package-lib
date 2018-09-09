@@ -33,13 +33,13 @@ public interface Objects {
 	class Object {
 
 		final Package pkg;
-		public final Package.Export export;
+		public final Entities.Export export;
 		public final ObjectHeader header;
 		public final Collection<Properties.Property> properties;
 		final int dataStart;
 
 		public Object(
-				Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+				Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			this.pkg = pkg;
 			this.export = export;
 			this.header = header;
@@ -73,7 +73,7 @@ public interface Objects {
 			RGBA8
 		}
 
-		public Texture(Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+		public Texture(Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			super(pkg, export, header, properties, dataStart);
 		}
 
@@ -125,9 +125,9 @@ public interface Objects {
 		public Palette palette() {
 			Properties.Property prop = property("Palette");
 			if (prop instanceof Properties.ObjectProperty) {
-				Package.Named exp = ((Properties.ObjectProperty)prop).value.get();
-				if (exp instanceof Package.Export) {
-					Object pallete = ((Package.Export)exp).object();
+				Entities.Named exp = ((Properties.ObjectProperty)prop).value.get();
+				if (exp instanceof Entities.ExportedObject) {
+					Object pallete = ((Entities.ExportedObject)exp).object();
 					if (pallete instanceof Palette) return (Palette)pallete;
 				}
 			}
@@ -199,7 +199,7 @@ public interface Objects {
 
 	class Palette extends Object {
 
-		public Palette(Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+		public Palette(Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			super(pkg, export, header, properties, dataStart);
 		}
 

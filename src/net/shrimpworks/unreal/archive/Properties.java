@@ -43,7 +43,7 @@ public interface Properties {
 		Plane,
 		Unknown;
 
-		public static StructType get(Package.Name name) {
+		public static StructType get(Entities.Name name) {
 			for (StructType s : values()) {
 				if (s.name().equalsIgnoreCase(name.name)) return s;
 			}
@@ -51,18 +51,18 @@ public interface Properties {
 		}
 	}
 
-	public static abstract class Property implements Package.Named {
+	public static abstract class Property implements Entities.Named {
 
 		final Package pkg;
-		public final Package.Name name;
+		public final Entities.Name name;
 
-		private Property(Package pkg, Package.Name name) {
+		private Property(Package pkg, Entities.Name name) {
 			this.pkg = pkg;
 			this.name = name;
 		}
 
 		@Override
-		public Package.Name name() {
+		public Entities.Name name() {
 			return name;
 		}
 
@@ -76,7 +76,7 @@ public interface Properties {
 
 		public final boolean value;
 
-		public BooleanProperty(Package pkg, Package.Name name, boolean value) {
+		public BooleanProperty(Package pkg, Entities.Name name, boolean value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -91,7 +91,7 @@ public interface Properties {
 
 		public final byte value;
 
-		public ByteProperty(Package pkg, Package.Name name, byte value) {
+		public ByteProperty(Package pkg, Entities.Name name, byte value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -106,7 +106,7 @@ public interface Properties {
 
 		public final int value;
 
-		public IntegerProperty(Package pkg, Package.Name name, int value) {
+		public IntegerProperty(Package pkg, Entities.Name name, int value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -121,7 +121,7 @@ public interface Properties {
 
 		public final float value;
 
-		public FloatProperty(Package pkg, Package.Name name, float value) {
+		public FloatProperty(Package pkg, Entities.Name name, float value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -136,7 +136,7 @@ public interface Properties {
 
 		public final String value;
 
-		public StringProperty(Package pkg, Package.Name name, String value) {
+		public StringProperty(Package pkg, Entities.Name name, String value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -149,9 +149,9 @@ public interface Properties {
 
 	public static class ObjectProperty extends Property {
 
-		public final Package.ObjectReference value;
+		public final Entities.ObjectReference value;
 
-		public ObjectProperty(Package pkg, Package.Name name, Package.ObjectReference value) {
+		public ObjectProperty(Package pkg, Entities.Name name, Entities.ObjectReference value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -164,9 +164,9 @@ public interface Properties {
 
 	public static class NameProperty extends Property {
 
-		public final Package.Name value;
+		public final Entities.Name value;
 
-		public NameProperty(Package pkg, Package.Name name, Package.Name value) {
+		public NameProperty(Package pkg, Entities.Name name, Entities.Name value) {
 			super(pkg, name);
 			this.value = value;
 		}
@@ -179,18 +179,18 @@ public interface Properties {
 
 	public static abstract class StructProperty extends Property {
 
-		public StructProperty(Package pkg, Package.Name name) {
+		public StructProperty(Package pkg, Entities.Name name) {
 			super(pkg, name);
 		}
 	}
 
 	public static class PointRegionProperty extends StructProperty {
 
-		public final Package.ObjectReference zone;
+		public final Entities.ObjectReference zone;
 		public final int ileaf;
 		public final byte zoneNumber;
 
-		public PointRegionProperty(Package pkg, Package.Name name, Package.ObjectReference zone, int ileaf, byte zoneNumber) {
+		public PointRegionProperty(Package pkg, Entities.Name name, Entities.ObjectReference zone, int ileaf, byte zoneNumber) {
 			super(pkg, name);
 			this.zone = zone;
 			this.ileaf = ileaf;
@@ -209,7 +209,7 @@ public interface Properties {
 		public final float y;
 		public final float z;
 
-		public VectorProperty(Package pkg, Package.Name name, float x, float y, float z) {
+		public VectorProperty(Package pkg, Entities.Name name, float x, float y, float z) {
 			super(pkg, name);
 			this.x = x;
 			this.y = y;
@@ -228,7 +228,7 @@ public interface Properties {
 		public final int yaw;
 		public final int roll;
 
-		public RotatorProperty(Package pkg, Package.Name name, int pitch, int yaw, int roll) {
+		public RotatorProperty(Package pkg, Entities.Name name, int pitch, int yaw, int roll) {
 			super(pkg, name);
 			this.pitch = pitch;
 			this.yaw = yaw;
@@ -246,7 +246,7 @@ public interface Properties {
 		public final float sheerRate;
 		public final byte sheerAxis;
 
-		public ScaleProperty(Package pkg, Package.Name name, float x, float y, float z, float sheerRate, byte sheerAxis) {
+		public ScaleProperty(Package pkg, Entities.Name name, float x, float y, float z, float sheerRate, byte sheerAxis) {
 			super(pkg, name, x, y, z);
 			this.sheerRate = sheerRate;
 			this.sheerAxis = sheerAxis;
@@ -266,7 +266,7 @@ public interface Properties {
 		public final byte b;
 		public final byte a;
 
-		public ColorProperty(Package pkg, Package.Name name, byte r, byte g, byte b, byte a) {
+		public ColorProperty(Package pkg, Entities.Name name, byte r, byte g, byte b, byte a) {
 			super(pkg, name);
 			this.r = r;
 			this.g = g;
@@ -284,7 +284,7 @@ public interface Properties {
 
 		public final float w;
 
-		public ShapeProperty(Package pkg, Package.Name name, float x, float y, float z, float w) {
+		public ShapeProperty(Package pkg, Entities.Name name, float x, float y, float z, float w) {
 			super(pkg, name, x, y, z);
 			this.w = w;
 		}
@@ -297,23 +297,23 @@ public interface Properties {
 
 	public static class SphereProperty extends ShapeProperty {
 
-		public SphereProperty(Package pkg, Package.Name name, float x, float y, float z, float w) {
+		public SphereProperty(Package pkg, Entities.Name name, float x, float y, float z, float w) {
 			super(pkg, name, x, y, z, w);
 		}
 	}
 
 	public static class PlaneProperty extends ShapeProperty {
 
-		public PlaneProperty(Package pkg, Package.Name name, float x, float y, float z, float w) {
+		public PlaneProperty(Package pkg, Entities.Name name, float x, float y, float z, float w) {
 			super(pkg, name, x, y, z, w);
 		}
 	}
 
 	public static class ArrayProperty extends Property {
 
-		public final Package.ObjectReference arrayType;
+		public final Entities.ObjectReference arrayType;
 
-		public ArrayProperty(Package pkg, Package.Name name, Package.ObjectReference arrayType) {
+		public ArrayProperty(Package pkg, Entities.Name name, Entities.ObjectReference arrayType) {
 			super(pkg, name);
 			this.arrayType = arrayType;
 		}
@@ -328,7 +328,7 @@ public interface Properties {
 
 		public final int count;
 
-		public FixedArrayProperty(Package pkg, Package.Name name, Package.ObjectReference arrayType, int count) {
+		public FixedArrayProperty(Package pkg, Entities.Name name, Entities.ObjectReference arrayType, int count) {
 			super(pkg, name, arrayType);
 			this.count = count;
 		}
@@ -341,7 +341,7 @@ public interface Properties {
 
 	public static class UnknownStructProperty extends StructProperty {
 
-		public UnknownStructProperty(Package pkg, Package.Name name) {
+		public UnknownStructProperty(Package pkg, Entities.Name name) {
 			super(pkg, name);
 		}
 	}

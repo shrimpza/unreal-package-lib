@@ -1,20 +1,15 @@
 package net.shrimpworks.unreal.archive;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
-import javax.imageio.ImageIO;
 
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/MonsterHunt.u"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
-		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
+//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
 		System.out.printf("Package version: %d%n", pkg.version);
 
 //		System.out.println(pkg.exports()[0]);
@@ -32,10 +27,17 @@ public class Main {
 
 		// read all objects' properties
 //		System.out.println(pkg.object(pkg.exports()[234]));
-		for (int i = 0; i < pkg.exports.length; i++) {
-			System.out.println(" >>> " + i);
-			System.out.println(pkg.exports[i].object());
-		}
+//		for (int i = 0; i < pkg.objects.length; i++) {
+//			System.out.println(" >>> " + i + ": " + pkg.objects[i].objClass.get().name());
+//			try {
+//				System.out.println(pkg.objects[i].object());
+//			} catch (Exception e) {
+//				System.out.println("ERR: " + e.getMessage());
+//			}
+//			if (pkg.exports[i] instanceof Package.ExportedObject) {
+//				System.out.println(((Package.ExportedObject)pkg.exports[i]).object());
+//			}
+//		}
 
 //		for (Package.Export ex : pkg.exports) {
 //			System.out.printf("%s (%s extends %s)%n", ex.name.name, ex.objClass.get(), ex.objSuper.get());
@@ -56,10 +58,12 @@ public class Main {
 //		}
 
 		// read level info (also in LevelSummary, but missing Screenshot)
-//		Package.Export levelInfo = pkg.exportsByClassName("LevelInfo").iterator().next();
-//		System.out.println(levelInfo.object().property("Author"));
-//		System.out.println(levelInfo.object().property("Title"));
-//		System.out.println(levelInfo.object().property("Screenshot"));
+		Entities.ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
+		System.out.println(levelInfo.object().property("Author"));
+		System.out.println(levelInfo.object().property("Title"));
+		System.out.println(levelInfo.object().property("Screenshot"));
+
+		System.out.println(((Properties.ObjectProperty)levelInfo.object().property("Screenshot")).value.get());
 //
 //		for (Properties.Property property : levelInfo.object().properties) {
 //			System.out.println(property);

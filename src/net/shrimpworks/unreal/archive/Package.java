@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
+import static net.shrimpworks.unreal.archive.Entities.*;
 import static net.shrimpworks.unreal.archive.Properties.*;
 
 // reference: http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/package-file-format.html
@@ -27,39 +28,6 @@ public class Package {
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;
 
 	private static final int MAX_PROPERTIES = 256;
-
-	private final FileChannel channel;
-	private final ByteBuffer buffer;
-
-	/**
-	 * Package file version.
-	 *
-	 * <ul>
-	 * <li><= 68 Unreal</li>
-	 * <li>>= 69 Unreal Tournament</li>
-	 * <li>>= 100 UE2 (UT2003/4)</li>
-	 * </ul>
-	 *
-	 * @return package version
-	 */
-	public final int version;
-	public final int flags;
-
-	public final Name[] names;
-	public final Export[] exports;
-	public final Import[] imports;
-
-	// cache of already-parsed/read objects, simply keyed by file position
-	private final WeakHashMap<Integer, Objects.Object> loadedObjects;
-
-	private final Name none;
-
-	public interface Named {
-
-		public static Named NULL = () -> new Name("Null", 0);
-
-		public Name name();
-	}
 
 	public enum PackageFlag {
 		AllowDownload(0x0001),    //	Allow downloading package
@@ -82,53 +50,31 @@ public class Package {
 		}
 	}
 
-	public enum ObjectFlag {
-		Transactional(0x00000001),
-		Unreachable(0x00000002),
-		Public(0x00000004),
-		TagImp(0x00000008),
-		TagExp(0x00000010),
-		SourceModified(0x00000020),
-		TagGarbage(0x00000040),
-		NeedLoad(0x00000200),
-		HighlightedName(0x00000400),
-		EliminateObject(0x00000400),
-		InSingularFunc(0x00000800),
-		RemappedName(0x00000800),
-		Suppress(0x00001000),
-		StateChanged(0x00001000),
-		InEndState(0x00002000),
-		Transient(0x00004000),
-		PreLoading(0x00008000),
-		LoadForClient(0x00010000),
-		LoadForServer(0x00020000),
-		LoadForEdit(0x00040000),
-		Standalone(0x00080000),
-		NotForClient(0x00100000),
-		NotForServer(0x00200000),
-		NotForEdit(0x00400000),
-		Destroyed(0x00800000),
-		NeedPostLoad(0x01000000),
-		HasStack(0x02000000),
-		Native(0x04000000),
-		Marked(0x08000000),
-		ErrorShutdown(0x10000000),
-		DebugPostLoad(0x20000000),
-		DebugSerialize(0x40000000),
-		DebugDestroy(0x80000000);
+	private final FileChannel channel;
+	private final ByteBuffer buffer;
 
-		private final int flag;
+	/**
+	 * Package file version.
+	 *
+	 * <ul>
+	 * <li><= 68 Unreal</li>
+	 * <li>>= 69 Unreal Tournament</li>
+	 * <li>>= 100 UE2 (UT2003/4)</li>
+	 * </ul>
+	 */
+	public final int version;
+	public final int license;
+	public final int flags;
 
-		ObjectFlag(int flag) {
-			this.flag = flag;
-		}
+	public final Name[] names;
+	public final Export[] exports;
+	public final Import[] imports;
 
-		public static EnumSet<ObjectFlag> fromFlags(int flags) {
-			EnumSet<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
-			objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
-			return objectFlags;
-		}
-	}
+	public final ExportedObject[] objects;
+	public final ExportedField[] fields;
+
+	// cache of already-parsed/read objects, simply keyed by file position
+	private final WeakHashMap<Integer, Objects.Object> loadedObjects;
 
 	public Package(Path pkg) throws IOException {
 		this.channel = FileChannel.open(pkg, StandardOpenOption.READ);
@@ -140,7 +86,7 @@ public class Package {
 		if (readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("File " + pkg + " does not seem to be an Unreal package");
 
 		this.version = readShort();
-		short license = readShort();
+		this.license = readShort();
 
 		this.flags = readInt();
 
@@ -168,19 +114,46 @@ public class Package {
 			}
 		}
 
+		// read the names table
 		this.names = names(nameCount, namePos);
+
+		// read the exports table; this simply reads the exports and makes no attempt to classify the exported content
 		this.exports = exports(exportCount, exportPos);
+
+		// read the imports table (arguably might be useful to read before exports)
 		this.imports = imports(importCount, importPos);
 
-		this.loadedObjects = new WeakHashMap<>();
+		// convenience - try to collect objects and fields into separate collections for easier management
+		this.objects = Arrays.stream(exports)
+							 .map(e -> (ExportedEntry)e)
+							 .filter(e -> !FieldTypes.isField(e.objClass))
+							 .map(ExportedEntry::asObject)
+							 .toArray(ExportedObject[]::new);
 
-		this.none = Arrays.stream(names).filter(n -> n.name.equals("None")).findFirst().orElse(null);
+		this.fields = Arrays.stream(exports)
+							.map(e -> (ExportedEntry)e)
+							.filter(e -> FieldTypes.isField(e.objClass))
+							.map(ExportedEntry::asField)
+							.toArray(ExportedField[]::new);
+
+		this.loadedObjects = new WeakHashMap<>();
 	}
 
+	/**
+	 * Get flags set on the package.
+	 *
+	 * @return flag set
+	 */
 	public EnumSet<PackageFlag> flags() {
 		return PackageFlag.fromFlags(flags);
 	}
 
+	/**
+	 * Convenience to get all exported elements by a known class name.
+	 *
+	 * @param className class to search for
+	 * @return matching exports
+	 */
 	public Collection<Export> exportsByClassName(String className) {
 		Set<Export> exports = new HashSet<>();
 		for (Export ex : this.exports) {
@@ -192,177 +165,21 @@ public class Package {
 		return exports;
 	}
 
-	private Objects.Object object(Export export) {
-		Objects.Object existing = loadedObjects.get(export.pos);
-		if (existing != null) return existing;
-
-		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
-
-		System.out.println(export.objClass.get());
-		if (export.objClass.index == 0) return null;
-
-		moveTo(export.pos);
-
-		Objects.ObjectHeader header;
-		if (export.flags().contains(ObjectFlag.HasStack)) {
-			int node = readIndex();
-			header = new Objects.ObjectHeader(
-					node, readIndex(), readLong(), readInt(),
-					node != 0 ? readIndex() : 0
-			);
-		} else {
-			header = null;
-		}
-
-		List<Property> properties = new ArrayList<>();
-		for (int i = 0; i < MAX_PROPERTIES; i++) {
-			Property p = readProperty();
-
-			if (p.name.equals(none)) break;
-			else properties.add(p);
-		}
-
-		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = 0;
-		try {
-			propsLength = channel.position() - buffer.remaining();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		Named type = export.objClass.get();
-		Objects.Object newObject;
-
-		// FIXME just testing; define these as enum types probable, with factories
-		if (type instanceof Import && ((Import)type).name.name.equals("Texture")) {
-			newObject = new Objects.Texture(this, export, header, properties, (int)propsLength);
-		} else if (type instanceof Import && ((Import)type).name.name.equals("Palette")) {
-			newObject = new Objects.Palette(this, export, header, properties, (int)propsLength);
-		} else {
-			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
-		}
-
-		loadedObjects.put(export.pos, newObject);
-
-		return newObject;
-	}
-
-	private Property readProperty() {
-		int nameIndex = readIndex();
-		Name name = names[nameIndex];
-
-		// the end - don't read or process anything beyond here
-		if (name.equals(none)) return new NameProperty(this, name, name);
-
-		byte propInfo = readByte();
-
-		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
-		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
-		int lastBit = (propInfo & 0x80); // bit 7 is either array size, or boolean value
-
-		PropertyType propType = PropertyType.get(type);
-
-		if (propType == null) {
-			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name));
-		}
-
-		// if array and not boolean, next byte is index of property within the array
-		int arrayIndex = 0;
-		if (lastBit != 0 && propType != PropertyType.BooleanProperty) {
-			arrayIndex = readByte();
-		}
-
-		// When a struct, type of struct follows before size and body
-		StructType structType = null;
-		if (propType == PropertyType.StructProperty) {
-			int structIdx = readIndex();
-			structType = StructType.get(names[structIdx]);
-			if (structType == null) {
-				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name));
+	/**
+	 * Convenience to get all exported objects by a known class name.
+	 *
+	 * @param className class to search for
+	 * @return matching objects
+	 */
+	public Collection<ExportedObject> objectsByClassName(String className) {
+		Set<ExportedObject> exports = new HashSet<>();
+		for (ExportedObject ex : this.objects) {
+			Named type = ex.objClass.get();
+			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
+				exports.add(ex);
 			}
 		}
-
-		switch (size) {
-			case 0:
-				size = 1; break;
-			case 1:
-				size = 2; break;
-			case 2:
-				size = 4; break;
-			case 3:
-				size = 12; break;
-			case 4:
-				size = 16; break;
-			case 5:
-				size = readByte(); break;
-			case 6:
-				size = readShort(); break;
-			case 7:
-				size = readInt(); break;
-		}
-
-		return createProperty(name, propType, structType, arrayIndex, size, lastBit);
-	}
-
-	private Property createProperty(Name name, PropertyType type, StructType structType, int arrayIndex, int size, int flagBit) {
-
-//		System.out.println("name = [" + name + "], type = [" + type + "], structType = [" + structType + "], arrayIndex = [" + arrayIndex +
-//						   "], size = [" + size + "], flagBit = [" + flagBit + "]");
-
-		int startPos = buffer.position();
-
-		try {
-			switch (type) {
-				case BooleanProperty:
-					return new BooleanProperty(this, name, flagBit > 0);
-				case ByteProperty:
-					return new ByteProperty(this, name, readByte());
-				case IntegerProperty:
-					return new IntegerProperty(this, name, readInt());
-				case FloatProperty:
-					return new FloatProperty(this, name, readFloat());
-				case StrProperty:
-				case StringProperty:
-					return new StringProperty(this, name, readString());
-				case NameProperty:
-					return new NameProperty(this, name, name.equals(none) ? none : names[readIndex()]);
-				case ObjectProperty:
-					return new ObjectProperty(this, name, new ObjectReference(readIndex()));
-				case StructProperty:
-					switch (structType) {
-						case PointRegion:
-							return new PointRegionProperty(this, name, new ObjectReference(readIndex()), readInt(), readByte());
-						case Vector:
-							return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
-						case Scale:
-							return new ScaleProperty(this, name, readFloat(), readFloat(), readFloat(), readFloat(), readByte());
-						case Rotator:
-							return new RotatorProperty(this, name, readInt(), readInt(), readInt());
-						case Color:
-							return new ColorProperty(this, name, readByte(), readByte(), readByte(), readByte());
-						default:
-							// unknown struct, but perhaps we can assume it to be a vector at least
-							if (size == 12) return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
-							return new UnknownStructProperty(this, name);
-					}
-				case RotatorProperty:
-					return new RotatorProperty(this, name, readInt(), readInt(), readInt());
-				case VectorProperty:
-					return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
-				case ArrayProperty:
-					return new ArrayProperty(this, name, new ObjectReference(readIndex()));
-				case FixedArrayProperty:
-					return new FixedArrayProperty(this, name, new ObjectReference(readIndex()), readIndex());
-				default:
-					throw new IllegalArgumentException("FIXME " + type);
-			}
-		} finally {
-			if (buffer.position() - startPos < size) {
-				// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
-				// this also lets move past array payloads without consuming them yet
-				moveRelative(size - (buffer.position() - startPos));
-			}
-		}
+		return exports;
 	}
 
 	// --- buffer positioning and management
@@ -441,7 +258,7 @@ public class Package {
 	 * @return array of names
 	 * @throws IOException io failure
 	 */
-	private Name[] names(int count, int pos) throws IOException {
+	private Name[] names(int count, int pos) {
 		Name[] names = new Name[count];
 
 		moveTo(pos);
@@ -460,9 +277,8 @@ public class Package {
 	 * @param count number of exports in the file
 	 * @param pos   position of the first export within the file
 	 * @return array of exports
-	 * @throws IOException io failure
 	 */
-	private Export[] exports(int count, int pos) throws IOException {
+	private Export[] exports(int count, int pos) {
 		assert names != null && names.length > 0;
 
 		Export[] exports = new Export[count];
@@ -483,9 +299,8 @@ public class Package {
 	 * @param count number of exports in the file
 	 * @param pos   position of the first export within the file
 	 * @return array of exports
-	 * @throws IOException io failure
 	 */
-	private Import[] imports(int count, int pos) throws IOException {
+	private Import[] imports(int count, int pos) {
 		assert names != null && names.length > 0;
 
 		Import[] imports = new Import[count];
@@ -536,29 +351,20 @@ public class Package {
 	 * @return a new export
 	 */
 	private Export readExport() {
-		ObjectReference expClass = new ObjectReference(readIndex());
-		ObjectReference expSuper = new ObjectReference(readIndex());
-		ObjectReference expGroup = new ObjectReference(readInt());
-		if (expClass.index == 0) {
-			return new ExportField(
-					this,
-					expClass, expSuper, expGroup,
-					names[readIndex()], // name
-					readInt(),   // flags
-					readIndex(), // size
-					readIndex()  // pos
-			);
-		} else {
-			return new ExportObject(
-					this,
-					expClass, expSuper, expGroup,
-					names[readIndex()], // name
-					readInt(),   // flags
-					readIndex(), // size
-					readIndex()  // pos
-			);
-		}
+		ObjectReference expClass = new ObjectReference(this, readIndex());
+		ObjectReference expSuper = new ObjectReference(this, readIndex());
+		ObjectReference expGroup = new ObjectReference(this, readInt());
 
+		Name name = names[readIndex()];
+		int flags = readInt();
+		int size = readIndex();
+		int pos = name.equals(NONE) ? 0 : readIndex(); // magical undocumented case; "None" does not have a pos, though it has a (0) size
+
+		return new ExportedEntry(
+				this,
+				expClass, expSuper, expGroup,
+				name, flags, size, pos
+		);
 	}
 
 	/**
@@ -570,9 +376,209 @@ public class Package {
 		return new Import(
 				names[readIndex()], // package file
 				names[readIndex()], // class
-				new ObjectReference(readInt()),   // package name
+				new ObjectReference(this, readInt()),   // package name
 				names[readIndex()]  // name
 		);
+	}
+
+	/**
+	 * Create an Object for the provided export.
+	 * <p>
+	 * This implementation will read and populate the resulting object's
+	 * properties collection, and then return an object of an appropriate
+	 * type if possible.
+	 * <p>
+	 * The specific object implementation should expose methods to obtain
+	 * instances of the object data itself in appropriate formats.
+	 *
+	 * @param export the export to get an object for
+	 * @return a new object instance
+	 */
+	Objects.Object object(ExportedObject export) {
+		Objects.Object existing = loadedObjects.get(export.pos);
+		if (existing != null) return existing;
+
+		if (export.size <= 0) throw new IllegalStateException(String.format("Export %s has no associated object data!", export.name));
+
+		if (export.objClass.index == 0) return null;
+
+		moveTo(export.pos);
+
+		Objects.ObjectHeader header;
+		if (export.flags().contains(ObjectFlag.HasStack)) {
+			int node = readIndex();
+			header = new Objects.ObjectHeader(
+					node, readIndex(), readLong(), readInt(),
+					node != 0 ? readIndex() : 0
+			);
+		} else {
+			header = null;
+		}
+
+		List<Property> properties = new ArrayList<>();
+		for (int i = 0; i < MAX_PROPERTIES; i++) {
+			Property p = readProperty();
+
+			if (p.name.equals(NONE)) break;
+			else properties.add(p);
+		}
+
+		// keep track of how long the properties were, so we can potentially continue reading object data from this point
+		long propsLength = 0;
+		try {
+			propsLength = channel.position() - buffer.remaining();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		Named type = export.objClass.get();
+		Objects.Object newObject;
+
+		// FIXME just testing; define these as enum types probable, with factories
+		if (type instanceof Import && ((Import)type).name.name.equals("Texture")) {
+			newObject = new Objects.Texture(this, export, header, properties, (int)propsLength);
+		} else if (type instanceof Import && ((Import)type).name.name.equals("Palette")) {
+			newObject = new Objects.Palette(this, export, header, properties, (int)propsLength);
+		} else {
+			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
+		}
+
+		loadedObjects.put(export.pos, newObject);
+
+		return newObject;
+	}
+
+	/**
+	 * Utility method to read an individual object property.
+	 *
+	 * @return property of the appropriate type
+	 */
+	private Property readProperty() {
+		int nameIndex = readIndex();
+		Name name = names[nameIndex];
+
+		// the end - don't read or process anything beyond here
+		if (name.equals(NONE)) return new NameProperty(this, name, name);
+
+		byte propInfo = readByte();
+
+		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
+		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
+		int lastBit = (propInfo & 0x80); // bit 7 is either array size, or boolean value
+
+		PropertyType propType = PropertyType.get(type);
+
+		if (propType == null) {
+			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name));
+		}
+
+		// if array and not boolean, next byte is index of property within the array
+		int arrayIndex = 0;
+		if (lastBit != 0 && propType != PropertyType.BooleanProperty) {
+			arrayIndex = readByte();
+		}
+
+		// When a struct, type of struct follows before size and body
+		StructType structType = null;
+		if (propType == PropertyType.StructProperty) {
+			int structIdx = readIndex();
+			structType = structIdx >= 0 ? StructType.get(names[structIdx]) : null;
+			if (structType == null) {
+				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name));
+			}
+		}
+
+		switch (size) {
+			case 0:
+				size = 1; break;
+			case 1:
+				size = 2; break;
+			case 2:
+				size = 4; break;
+			case 3:
+				size = 12; break;
+			case 4:
+				size = 16; break;
+			case 5:
+				size = readByte(); break;
+			case 6:
+				size = readShort(); break;
+			case 7:
+				size = readInt(); break;
+		}
+
+		return createProperty(name, propType, structType, arrayIndex, size, lastBit);
+	}
+
+	/**
+	 * Utilities all the way down, this creates a typed property instance
+	 * based on the provided property type.
+	 *
+	 * @param name       property name
+	 * @param type       type of property
+	 * @param structType if a struct property, the struct type
+	 * @param arrayIndex in an array property, the index of this property within an array
+	 * @param size       the byte length of the property
+	 * @param flagBit    the final bit of the property header, sometimes used to infer things
+	 * @return a new property
+	 */
+	private Property createProperty(Name name, PropertyType type, StructType structType, int arrayIndex, int size, int flagBit) {
+
+		int startPos = buffer.position();
+
+		try {
+			switch (type) {
+				case BooleanProperty:
+					return new BooleanProperty(this, name, flagBit > 0);
+				case ByteProperty:
+					return new ByteProperty(this, name, readByte());
+				case IntegerProperty:
+					return new IntegerProperty(this, name, readInt());
+				case FloatProperty:
+					return new FloatProperty(this, name, readFloat());
+				case StrProperty:
+				case StringProperty:
+					return new StringProperty(this, name, readString());
+				case NameProperty:
+					return new NameProperty(this, name, name.equals(NONE) ? NONE : names[readIndex()]);
+				case ObjectProperty:
+					return new ObjectProperty(this, name, new ObjectReference(this, readIndex()));
+				case StructProperty:
+					switch (structType) {
+						case PointRegion:
+							return new PointRegionProperty(this, name, new ObjectReference(this, readIndex()), readInt(), readByte());
+						case Vector:
+							return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+						case Scale:
+							return new ScaleProperty(this, name, readFloat(), readFloat(), readFloat(), readFloat(), readByte());
+						case Rotator:
+							return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+						case Color:
+							return new ColorProperty(this, name, readByte(), readByte(), readByte(), readByte());
+						default:
+							// unknown struct, but perhaps we can assume it to be a vector at least
+							if (size == 12) return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+							return new UnknownStructProperty(this, name);
+					}
+				case RotatorProperty:
+					return new RotatorProperty(this, name, readInt(), readInt(), readInt());
+				case VectorProperty:
+					return new VectorProperty(this, name, readFloat(), readFloat(), readFloat());
+				case ArrayProperty:
+					return new ArrayProperty(this, name, new ObjectReference(this, readIndex()));
+				case FixedArrayProperty:
+					return new FixedArrayProperty(this, name, new ObjectReference(this, readIndex()), readIndex());
+				default:
+					throw new IllegalArgumentException("FIXME " + type);
+			}
+		} finally {
+			// if we didn't read all the property's bytes somehow, fast-forward to the end of the property...
+			// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
+			// this also lets move past array payloads without consuming them yet in this version
+			if (buffer.position() - startPos < size) {
+				moveRelative(size - (buffer.position() - startPos));
+			}
+		}
 	}
 
 	// --- convenience
@@ -603,6 +609,14 @@ public class Package {
 		return start - buffer.remaining();
 	}
 
+	/**
+	 * Reads a "Compact Index" integer value.
+	 * <p>
+	 * Refer to package documentation and reference for description of the
+	 * format.
+	 *
+	 * @return a compact index integer
+	 */
 	int readIndex() {
 		boolean negative = false;
 		int num = 0;
@@ -629,141 +643,6 @@ public class Package {
 		}
 
 		return negative ? num * -1 : num;
-	}
-
-	// --- exposed classes
-
-	public static class Name {
-
-		public final String name;
-		public final int flags;
-
-		private Name(String name, int flags) {
-			this.name = name;
-			this.flags = flags;
-		}
-
-		public EnumSet<ObjectFlag> flags() {
-			return ObjectFlag.fromFlags(flags);
-		}
-
-		@Override
-		public String toString() {
-			return String.format("Name [name=%s, flags=%s]", name, flags());
-		}
-	}
-
-	public class ObjectReference {
-
-		private final int index;
-
-		private ObjectReference(int index) {
-			this.index = index;
-		}
-
-		public Named get() {
-			if (index < 0) {
-				return imports[(-index) - 1];
-			} else if (index > 0) {
-				return exports[index - 1];
-			} else {
-				return Named.NULL;
-			}
-		}
-
-		@Override
-		public String toString() {
-			return String.format("ObjectReference [index=%s]", index);
-		}
-	}
-
-	public static abstract class Export implements Named {
-
-		final Package pkg;
-
-		public final ObjectReference objClass;
-		public final ObjectReference objSuper;
-		public final ObjectReference objGroup;
-		public final Name name;
-		public final int flags;
-		public final int size;
-		public final int pos;
-
-		private Export(
-				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup,
-				Name name, int flags, int size, int pos) {
-			this.pkg = pkg;
-			this.objClass = objClass;
-			this.objSuper = objSuper;
-			this.objGroup = objGroup;
-			this.name = name;
-			this.flags = flags;
-			this.size = size;
-			this.pos = pos;
-		}
-
-		@Override
-		public Name name() {
-			return name;
-		}
-
-		public EnumSet<ObjectFlag> flags() {
-			return ObjectFlag.fromFlags(flags);
-		}
-
-		@Override
-		public String toString() {
-			return String.format("Export [objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-								 objClass, objSuper, objGroup, name, flags(), size, pos);
-		}
-	}
-
-	public static class ExportObject extends Export {
-
-		public ExportObject(
-				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size,
-				int pos) {
-			super(pkg, objClass, objSuper, objGroup, name, flags, size, pos);
-		}
-
-		public Objects.Object object() {
-			return pkg.object(this);
-		}
-
-	}
-
-	public static class ExportField extends Export {
-
-		public ExportField(
-				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size,
-				int pos) {
-			super(pkg, objClass, objSuper, objGroup, name, flags, size, pos);
-		}
-	}
-
-	public static class Import implements Named {
-
-		public final Name file;
-		public final Name className;
-		public final ObjectReference packageName;
-		public final Name name;
-
-		private Import(Name file, Name className, ObjectReference packageName, Name name) {
-			this.file = file;
-			this.className = className;
-			this.packageName = packageName;
-			this.name = name;
-		}
-
-		@Override
-		public Name name() {
-			return name;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("Import [file=%s, className=%s, packageName=%s, name=%s]", file, className, packageName, name);
-		}
 	}
 
 }
