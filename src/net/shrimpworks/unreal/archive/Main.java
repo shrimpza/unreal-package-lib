@@ -11,10 +11,10 @@ import javax.imageio.ImageIO;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/MonsterHunt.u"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
-//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
+		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
 		System.out.printf("Package version: %d%n", pkg.version);
 
 //		System.out.println(pkg.exports()[0]);
@@ -32,13 +32,12 @@ public class Main {
 
 		// read all objects' properties
 //		System.out.println(pkg.object(pkg.exports()[234]));
-//		for (int i = 0; i < pkg.exports().length; i++) {
-//			System.out.println(" >>> " + i);
-//			pkg.object(pkg.exports()[i]);
-//			System.out.println(pkg.object(pkg.exports()[i]));
-//		}
+		for (int i = 0; i < pkg.exports.length; i++) {
+			System.out.println(" >>> " + i);
+			System.out.println(pkg.exports[i].object());
+		}
 
-//		for (Package.Export ex : pkg.exports()) {
+//		for (Package.Export ex : pkg.exports) {
 //			System.out.printf("%s (%s extends %s)%n", ex.name.name, ex.objClass.get(), ex.objSuper.get());
 //		}
 
@@ -46,21 +45,24 @@ public class Main {
 //		System.out.println(((Package.Export)((Properties.ObjectProperty)screenshot).value.get()).objClass.get());
 
 		// try to find all textures in exports
-		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
-		for (Package.Export tex : textures) {
-			Objects.Texture obj = (Objects.Texture)tex.object();
-			Objects.Texture.MipMap[] mipMaps = obj.mipMaps();
-			System.out.println(Arrays.toString(mipMaps));
-
-			BufferedImage bufferedImage = mipMaps[0].get();
-			ImageIO.write(bufferedImage, "jpg", new File("/tmp/img.jpg"));
-		}
+//		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
+//		for (Package.Export tex : textures) {
+//			Objects.Texture obj = (Objects.Texture)tex.object();
+//			Objects.Texture.MipMap[] mipMaps = obj.mipMaps();
+//			System.out.println(Arrays.toString(mipMaps));
+//
+//			BufferedImage bufferedImage = mipMaps[0].get();
+//			ImageIO.write(bufferedImage, "jpg", new File("/tmp/img.jpg"));
+//		}
 
 		// read level info (also in LevelSummary, but missing Screenshot)
 //		Package.Export levelInfo = pkg.exportsByClassName("LevelInfo").iterator().next();
 //		System.out.println(levelInfo.object().property("Author"));
 //		System.out.println(levelInfo.object().property("Title"));
 //		System.out.println(levelInfo.object().property("Screenshot"));
-
+//
+//		for (Properties.Property property : levelInfo.object().properties) {
+//			System.out.println(property);
+//		}
 	}
 }

@@ -162,6 +162,10 @@ public class Package {
 			byte[] guid = new byte[16];
 			buffer.get(guid);
 			int generationCount = readInt();
+			for (int i = 0; i < generationCount; i++) {
+				int genExpCount = readInt();
+				int genNameCount = readInt();
+			}
 		}
 
 		this.names = names(nameCount, namePos);
@@ -193,6 +197,9 @@ public class Package {
 		if (existing != null) return existing;
 
 		if (export.size <= 0) throw new IllegalStateException("Export has no associated object data!");
+
+		System.out.println(export.objClass.get());
+		if (export.objClass.index == 0) return null;
 
 		moveTo(export.pos);
 
@@ -529,16 +536,29 @@ public class Package {
 	 * @return a new export
 	 */
 	private Export readExport() {
-		return new Export(
-				this,
-				new ObjectReference(readIndex()), // class
-				new ObjectReference(readIndex()), // super
-				new ObjectReference(readInt()),   // group
-				names[readIndex()], // name
-				readInt(),   // flags
-				readIndex(), // size
-				readIndex()  // pos
-		);
+		ObjectReference expClass = new ObjectReference(readIndex());
+		ObjectReference expSuper = new ObjectReference(readIndex());
+		ObjectReference expGroup = new ObjectReference(readInt());
+		if (expClass.index == 0) {
+			return new ExportField(
+					this,
+					expClass, expSuper, expGroup,
+					names[readIndex()], // name
+					readInt(),   // flags
+					readIndex(), // size
+					readIndex()  // pos
+			);
+		} else {
+			return new ExportObject(
+					this,
+					expClass, expSuper, expGroup,
+					names[readIndex()], // name
+					readInt(),   // flags
+					readIndex(), // size
+					readIndex()  // pos
+			);
+		}
+
 	}
 
 	/**
@@ -657,9 +677,9 @@ public class Package {
 		}
 	}
 
-	public static class Export implements Named {
+	public static abstract class Export implements Named {
 
-		private final Package pkg;
+		final Package pkg;
 
 		public final ObjectReference objClass;
 		public final ObjectReference objSuper;
@@ -687,10 +707,6 @@ public class Package {
 			return name;
 		}
 
-		public Objects.Object object() {
-			return pkg.object(this);
-		}
-
 		public EnumSet<ObjectFlag> flags() {
 			return ObjectFlag.fromFlags(flags);
 		}
@@ -699,6 +715,29 @@ public class Package {
 		public String toString() {
 			return String.format("Export [objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
 								 objClass, objSuper, objGroup, name, flags(), size, pos);
+		}
+	}
+
+	public static class ExportObject extends Export {
+
+		public ExportObject(
+				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size,
+				int pos) {
+			super(pkg, objClass, objSuper, objGroup, name, flags, size, pos);
+		}
+
+		public Objects.Object object() {
+			return pkg.object(this);
+		}
+
+	}
+
+	public static class ExportField extends Export {
+
+		public ExportField(
+				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size,
+				int pos) {
+			super(pkg, objClass, objSuper, objGroup, name, flags, size, pos);
 		}
 	}
 
