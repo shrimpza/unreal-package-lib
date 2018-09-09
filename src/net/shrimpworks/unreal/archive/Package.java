@@ -124,17 +124,16 @@ public class Package {
 		this.imports = imports(importCount, importPos);
 
 		// convenience - try to collect objects and fields into separate collections for easier management
-		this.objects = Arrays.stream(exports)
-							 .map(e -> (ExportedEntry)e)
-							 .filter(e -> !FieldTypes.isField(e.objClass))
-							 .map(ExportedEntry::asObject)
-							 .toArray(ExportedObject[]::new);
-
-		this.fields = Arrays.stream(exports)
-							.map(e -> (ExportedEntry)e)
-							.filter(e -> FieldTypes.isField(e.objClass))
-							.map(ExportedEntry::asField)
-							.toArray(ExportedField[]::new);
+		this.objects = new ExportedObject[exports.length];
+		this.fields = new ExportedField[exports.length];
+		for (int i = 0; i < exports.length; i++) {
+			ExportedEntry e = (ExportedEntry)exports[i];
+			if (FieldTypes.isField(e.objClass)) {
+				fields[i] = e.asField();
+			} else {
+				objects[i] = e.asObject();
+			}
+		}
 
 		this.loadedObjects = new WeakHashMap<>();
 	}
@@ -174,6 +173,7 @@ public class Package {
 	public Collection<ExportedObject> objectsByClassName(String className) {
 		Set<ExportedObject> exports = new HashSet<>();
 		for (ExportedObject ex : this.objects) {
+			if (ex == null) continue;
 			Named type = ex.objClass.get();
 			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
 				exports.add(ex);
@@ -256,7 +256,6 @@ public class Package {
 	 * @param count number of names in the file
 	 * @param pos   position of first name within the file
 	 * @return array of names
-	 * @throws IOException io failure
 	 */
 	private Name[] names(int count, int pos) {
 		Name[] names = new Name[count];
@@ -424,24 +423,26 @@ public class Package {
 		}
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = 0;
+		long propsLength;
 		try {
 			propsLength = channel.position() - buffer.remaining();
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException("Unable to calculate length of properties", e);
 		}
+//
+//		Named type = export.objClass.get();
+//		Objects.Object newObject;
+//
+//		// FIXME just testing; define these as enum types probable, with factories
+//		if (type instanceof Import && type.name().name.equals("Texture")) {
+//			newObject = new Objects.Texture(this, export, header, properties, (int)propsLength);
+//		} else if (type instanceof Import && type.name().name.equals("Palette")) {
+//			newObject = new Objects.Palette(this, export, header, properties, (int)propsLength);
+//		} else {
+//			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
+//		}
 
-		Named type = export.objClass.get();
-		Objects.Object newObject;
-
-		// FIXME just testing; define these as enum types probable, with factories
-		if (type instanceof Import && ((Import)type).name.name.equals("Texture")) {
-			newObject = new Objects.Texture(this, export, header, properties, (int)propsLength);
-		} else if (type instanceof Import && ((Import)type).name.name.equals("Palette")) {
-			newObject = new Objects.Palette(this, export, header, properties, (int)propsLength);
-		} else {
-			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
-		}
+		Objects.Object newObject = Objects.ObjectType.newInstance(this, export, header, properties, (int)propsLength);
 
 		loadedObjects.put(export.pos, newObject);
 

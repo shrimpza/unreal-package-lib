@@ -3,9 +3,51 @@ package net.shrimpworks.unreal.archive;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.IndexColorModel;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 
 public interface Objects {
+
+	enum ObjectType {
+		Texture(Objects.Texture.class),
+		Palette(Objects.Palette.class);
+
+		private final Class<? extends Object> clazz;
+
+		ObjectType(Class<? extends Object> clazz) {
+			this.clazz = clazz;
+		}
+
+		/**
+		 * Magically create a new typed instance of an object for the provided
+		 * export, if a specific type exists and is defined in the
+		 * {@link ObjectType} enum.
+		 *
+		 * @param pkg        package
+		 * @param export     exported entity
+		 * @param header     object header
+		 * @param properties properties read for object
+		 * @param dataStart  position of object payload in package
+		 * @return a new object
+		 */
+		public static Object newInstance(
+				Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+
+			Entities.Named type = export.objClass.get();
+
+			try {
+				ObjectType objectType = ObjectType.valueOf(type.name().name);
+				Constructor<? extends Object> constructor = objectType.clazz.getConstructor(Package.class, Entities.Export.class,
+																							ObjectHeader.class, Collection.class,
+																							int.class);
+				return constructor.newInstance(pkg, export, header, properties, dataStart);
+			} catch (IllegalArgumentException | NoSuchMethodException
+					| IllegalAccessException | InstantiationException | InvocationTargetException e) {
+				return new Object(pkg, export, header, properties, dataStart);
+			}
+		}
+	}
 
 	class ObjectHeader {
 
@@ -65,7 +107,7 @@ public interface Objects {
 	class Texture extends Object {
 
 		public enum Format {
-			PALLETISED_8_BIT,
+			PALETTE_8_BIT,
 			RGBA7,
 			RGB16,
 			DXT1,
@@ -73,7 +115,8 @@ public interface Objects {
 			RGBA8
 		}
 
-		public Texture(Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+		public Texture(
+				Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			super(pkg, export, header, properties, dataStart);
 		}
 
@@ -119,7 +162,7 @@ public interface Objects {
 				return Format.values()[((Properties.ByteProperty)prop).value];
 			}
 
-			return Format.PALLETISED_8_BIT;
+			return Format.PALETTE_8_BIT;
 		}
 
 		public Palette palette() {
@@ -180,7 +223,7 @@ public interface Objects {
 
 				// read texture properties, look for "Format", support P8 or DXT1
 				switch (texture.format()) {
-					case PALLETISED_8_BIT:
+					case PALETTE_8_BIT:
 						// read Palette from properties
 						Palette palette = texture.palette();
 						if (palette == null) throw new IllegalStateException("Could not find palette for texture");
@@ -199,7 +242,8 @@ public interface Objects {
 
 	class Palette extends Object {
 
-		public Palette(Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+		public Palette(
+				Package pkg, Entities.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			super(pkg, export, header, properties, dataStart);
 		}
 

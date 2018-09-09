@@ -1,7 +1,12 @@
 package net.shrimpworks.unreal.archive;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collection;
+import javax.imageio.ImageIO;
 
 public class Main {
 
@@ -47,14 +52,14 @@ public class Main {
 //		System.out.println(((Package.Export)((Properties.ObjectProperty)screenshot).value.get()).objClass.get());
 
 		// try to find all textures in exports
-//		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
-//		for (Package.Export tex : textures) {
+//		Collection<Entities.ExportedObject> textures = pkg.objectsByClassName("Texture");
+//		for (Entities.ExportedObject tex : textures) {
 //			Objects.Texture obj = (Objects.Texture)tex.object();
 //			Objects.Texture.MipMap[] mipMaps = obj.mipMaps();
 //			System.out.println(Arrays.toString(mipMaps));
 //
 //			BufferedImage bufferedImage = mipMaps[0].get();
-//			ImageIO.write(bufferedImage, "jpg", new File("/tmp/img.jpg"));
+//			ImageIO.write(bufferedImage, "jpg", new File("/tmp/tmp.jpg"));
 //		}
 
 		// read level info (also in LevelSummary, but missing Screenshot)
