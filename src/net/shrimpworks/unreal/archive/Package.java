@@ -182,6 +182,22 @@ public class Package {
 		return exports;
 	}
 
+	/**
+	 * Convenience to get all exported objects by a known class name.
+	 *
+	 * @return matching objects
+	 */
+	public ExportedObject objectByRef(ObjectReference ref) {
+		Named resolved = ref.get();
+		if (!(resolved instanceof Export)) throw new IllegalArgumentException("No object found for reference " + ref);
+
+		ExportedObject exportedObject = objects[((Export)resolved).index];
+
+		if (exportedObject == null) throw new IllegalArgumentException("Found export is not an object " + ref);
+
+		return exportedObject;
+	}
+
 	// --- buffer positioning and management
 
 	/**
@@ -286,7 +302,7 @@ public class Package {
 
 		for (int i = 0; i < count; i++) {
 			if (buffer.remaining() < 28) fillBuffer(); // more-or-less, probably less
-			exports[i] = readExport();
+			exports[i] = readExport(i);
 		}
 
 		return exports;
@@ -349,7 +365,7 @@ public class Package {
 	 *
 	 * @return a new export
 	 */
-	private Export readExport() {
+	private Export readExport(int index) {
 		ObjectReference expClass = new ObjectReference(this, readIndex());
 		ObjectReference expSuper = new ObjectReference(this, readIndex());
 		ObjectReference expGroup = new ObjectReference(this, readInt());
@@ -360,7 +376,7 @@ public class Package {
 		int pos = name.equals(NONE) ? 0 : readIndex(); // magical undocumented case; "None" does not have a pos, though it has a (0) size
 
 		return new ExportedEntry(
-				this,
+				this, index,
 				expClass, expSuper, expGroup,
 				name, flags, size, pos
 		);

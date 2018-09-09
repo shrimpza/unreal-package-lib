@@ -182,6 +182,7 @@ public interface Entities {
 	public abstract class Export implements Named {
 
 		final Package pkg;
+		final int index;
 
 		public final ObjectReference objClass;
 		public final ObjectReference objSuper;
@@ -192,9 +193,10 @@ public interface Entities {
 		public final int pos;
 
 		private Export(
-				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup,
-				Name name, int flags, int size, int pos) {
+				Package pkg, int index, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags,
+				int size, int pos) {
 			this.pkg = pkg;
+			this.index = index;
 			this.objClass = objClass;
 			this.objSuper = objSuper;
 			this.objGroup = objGroup;
@@ -215,8 +217,8 @@ public interface Entities {
 
 		@Override
 		public String toString() {
-			return String.format("Export [objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-								 objClass, objSuper, objGroup, name, flags(), size, pos);
+			return String.format("Export [index=%s, objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
+								 index, objClass, objSuper, objGroup, name, flags(), size, pos);
 		}
 	}
 
@@ -228,9 +230,9 @@ public interface Entities {
 	class ExportedEntry extends Export {
 
 		ExportedEntry(
-				Package pkg, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags, int size,
-				int pos) {
-			super(pkg, objClass, objSuper, objGroup, name, flags, size, pos);
+				Package pkg, int index, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags,
+				int size, int pos) {
+			super(pkg, index, objClass, objSuper, objGroup, name, flags, size, pos);
 		}
 
 		ExportedObject asObject() {
@@ -252,7 +254,8 @@ public interface Entities {
 	public class ExportedObject extends ExportedEntry {
 
 		private ExportedObject(ExportedEntry export) {
-			super(export.pkg, export.objClass, export.objSuper, export.objGroup, export.name, export.flags, export.size, export.pos);
+			super(export.pkg, export.index, export.objClass, export.objSuper, export.objGroup, export.name, export.flags, export.size,
+				  export.pos);
 		}
 
 		public Objects.Object object() {
@@ -270,7 +273,8 @@ public interface Entities {
 	public class ExportedField extends ExportedEntry {
 
 		private ExportedField(ExportedEntry export) {
-			super(export.pkg, export.objClass, export.objSuper, export.objGroup, export.name, export.flags, export.size, export.pos);
+			super(export.pkg, export.index, export.objClass, export.objSuper, export.objGroup, export.name, export.flags, export.size,
+				  export.pos);
 		}
 	}
 

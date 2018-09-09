@@ -4,16 +4,14 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
 import javax.imageio.ImageIO;
 
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
+//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/MonsterHunt.u"));
-//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
+		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/XGame.u"));
 		System.out.printf("Package version: %d%n", pkg.version);
 
@@ -64,11 +62,23 @@ public class Main {
 
 		// read level info (also in LevelSummary, but missing Screenshot)
 		Entities.ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
-		System.out.println(levelInfo.object().property("Author"));
-		System.out.println(levelInfo.object().property("Title"));
-		System.out.println(levelInfo.object().property("Screenshot"));
+		Objects.Object level = levelInfo.object();
+		System.out.println(level.property("Author"));
+		System.out.println(level.property("Title"));
+		System.out.println(level.property("Screenshot"));
 
-		System.out.println(((Properties.ObjectProperty)levelInfo.object().property("Screenshot")).value.get());
+		Entities.ExportedObject screenshot = pkg.objectByRef(((Properties.ObjectProperty)level.property("Screenshot")).value);
+		Objects.Object object = screenshot.object();
+		if (object instanceof Objects.Texture) {
+			Objects.Texture.MipMap[] mipMaps = ((Objects.Texture)object).mipMaps();
+			BufferedImage bufferedImage = mipMaps[0].get();
+			ImageIO.write(bufferedImage, "png", new File("/tmp/screenshot.png"));
+		} else if (object.className().equals("MaterialSequence")) {
+			// TODO guess we have to read arrays after all
+			System.out.println(object.property("SequenceItems"));
+		}
+
+//		System.out.println(((Properties.ObjectProperty)levelInfo.object().property("Screenshot")).value.get());
 //
 //		for (Properties.Property property : levelInfo.object().properties) {
 //			System.out.println(property);

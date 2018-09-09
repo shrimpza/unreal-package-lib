@@ -98,6 +98,10 @@ public interface Objects {
 			return null;
 		}
 
+		public String className() {
+			return export.objClass.get().name().name;
+		}
+
 		@Override
 		public String toString() {
 			return String.format("UnrealObject [export=%s, header=%s, properties=%s]", export, header, properties);
