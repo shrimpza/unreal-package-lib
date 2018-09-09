@@ -228,7 +228,9 @@ public class Package {
 
 		// FIXME just testing; define these as enum types probable, with factories
 		if (type instanceof Import && ((Import)type).name.name.equals("Texture")) {
-			newObject = new Objects.TextureObject(this, export, header, properties, (int)propsLength);
+			newObject = new Objects.Texture(this, export, header, properties, (int)propsLength);
+		} else if (type instanceof Import && ((Import)type).name.name.equals("Palette")) {
+			newObject = new Objects.Palette(this, export, header, properties, (int)propsLength);
 		} else {
 			newObject = new Objects.Object(this, export, header, properties, (int)propsLength);
 		}

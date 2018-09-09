@@ -2,6 +2,7 @@ package net.shrimpworks.unreal.archive;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.IndexColorModel;
 import java.util.Collection;
 
 public interface Objects {
@@ -61,10 +62,18 @@ public interface Objects {
 		}
 	}
 
-	class TextureObject extends Object {
+	class Texture extends Object {
 
-		public TextureObject(
-				Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+		public enum Format {
+			PALLETISED_8_BIT,
+			RGBA7,
+			RGB16,
+			DXT1,
+			RBG8,
+			RGBA8
+		}
+
+		public Texture(Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
 			super(pkg, export, header, properties, dataStart);
 		}
 
@@ -104,6 +113,28 @@ public interface Objects {
 			return mips;
 		}
 
+		public Format format() {
+			Properties.Property prop = property("Format");
+			if (prop instanceof Properties.ByteProperty) {
+				return Format.values()[((Properties.ByteProperty)prop).value];
+			}
+
+			return Format.PALLETISED_8_BIT;
+		}
+
+		public Palette palette() {
+			Properties.Property prop = property("Palette");
+			if (prop instanceof Properties.ObjectProperty) {
+				Package.Named exp = ((Properties.ObjectProperty)prop).value.get();
+				if (exp instanceof Package.Export) {
+					Object pallete = ((Package.Export)exp).object();
+					if (pallete instanceof Palette) return (Palette)pallete;
+				}
+			}
+
+			return null;
+		}
+
 		private byte[] readImage(MipMap mip) {
 			pkg.moveTo(mip.widthOffset - mip.size);
 			byte[] data = new byte[mip.size];
@@ -119,7 +150,7 @@ public interface Objects {
 
 		public class MipMap {
 
-			private final TextureObject texture;
+			private final Texture texture;
 			private final int widthOffset;
 			public final int size;
 			public final int width;
@@ -127,7 +158,7 @@ public interface Objects {
 			private final byte bitsWidth;
 			private final byte bitsHeight;
 
-			private MipMap(TextureObject texture, int widthOffset, int size, int width, int height, byte bitsWidth, byte bitsHeight) {
+			private MipMap(Texture texture, int widthOffset, int size, int width, int height, byte bitsWidth, byte bitsHeight) {
 				this.texture = texture;
 				this.widthOffset = widthOffset;
 				this.size = size;
@@ -144,16 +175,52 @@ public interface Objects {
 			}
 
 			public BufferedImage get() {
-				// FIXME read texture properties, look for "Format", support P8 or DXT1
-				// FIXME read Pallet from properties
 				// see https://github.com/acmi/l2tool/blob/master/src/main/java/acmi/l2/clientmod/l2tool/img/P8.java
 				byte[] data = texture.readImage(this);
-				BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED);
-				System.arraycopy(data, 0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData(), 0, data.length);
 
-				return image;
+				// read texture properties, look for "Format", support P8 or DXT1
+				switch (texture.format()) {
+					case PALLETISED_8_BIT:
+						// read Palette from properties
+						Palette palette = texture.palette();
+						if (palette == null) throw new IllegalStateException("Could not find palette for texture");
 
+						BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
+						System.arraycopy(data, 0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData(), 0, data.length);
+						return image;
+					case DXT1:
+					default:
+						throw new UnsupportedOperationException("Not implemented");
+
+				}
 			}
+		}
+	}
+
+	class Palette extends Object {
+
+		public Palette(Package pkg, Package.Export export, ObjectHeader header, Collection<Properties.Property> properties, int dataStart) {
+			super(pkg, export, header, properties, dataStart);
+		}
+
+		public IndexColorModel colorModel() {
+			pkg.moveTo(dataStart);
+
+			int size = pkg.readIndex();
+
+			byte[] r = new byte[size];
+			byte[] g = new byte[size];
+			byte[] b = new byte[size];
+			byte[] a = new byte[size];
+
+			for (int i = 0; i < size; i++) {
+				r[i] = pkg.readByte();
+				g[i] = pkg.readByte();
+				b[i] = pkg.readByte();
+				a[i] = pkg.readByte();
+			}
+
+			return new IndexColorModel(8, size, r, g, b, a);
 		}
 	}
 }

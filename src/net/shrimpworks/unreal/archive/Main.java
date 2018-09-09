@@ -48,8 +48,8 @@ public class Main {
 		// try to find all textures in exports
 		Collection<Package.Export> textures = pkg.exportsByClassName("Texture");
 		for (Package.Export tex : textures) {
-			Objects.TextureObject obj = (Objects.TextureObject)tex.object();
-			Objects.TextureObject.MipMap[] mipMaps = obj.mipMaps();
+			Objects.Texture obj = (Objects.Texture)tex.object();
+			Objects.Texture.MipMap[] mipMaps = obj.mipMaps();
 			System.out.println(Arrays.toString(mipMaps));
 
 			BufferedImage bufferedImage = mipMaps[0].get();
