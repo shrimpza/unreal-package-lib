@@ -7,6 +7,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 
+import net.shrimpworks.unreal.archive.util.dxt.DXT1Decompressor;
+
 public interface Objects {
 
 	enum ObjectType {
@@ -236,10 +238,11 @@ public interface Objects {
 						Palette palette = texture.palette();
 						if (palette == null) throw new IllegalStateException("Could not find palette for texture");
 
-						BufferedImage p8img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
-						System.arraycopy(data, 0, ((DataBufferByte)p8img.getRaster().getDataBuffer()).getData(), 0, data.length);
-						return p8img;
+						BufferedImage p8Img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
+						System.arraycopy(data, 0, ((DataBufferByte)p8Img.getRaster().getDataBuffer()).getData(), 0, data.length);
+						return p8Img;
 					case DXT1:
+						return DXT1Decompressor.decompressDXT1(data, width, height);
 					default:
 						throw new UnsupportedOperationException("Not implemented");
 				}
