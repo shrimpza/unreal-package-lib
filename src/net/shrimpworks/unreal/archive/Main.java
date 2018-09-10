@@ -74,8 +74,20 @@ public class Main {
 			BufferedImage bufferedImage = mipMaps[0].get();
 			ImageIO.write(bufferedImage, "png", new File("/tmp/screenshot.png"));
 		} else if (object.className().equals("MaterialSequence")) {
+//			for (Entities.Export sequenceItem : pkg.exportsByClassName("MaterialSequence")) {
+//				System.out.println(sequenceItem);
+//			}
 			// TODO guess we have to read arrays after all
-			System.out.println(object.property("SequenceItems"));
+//			System.out.println(object.property("SequenceItems"));
+			System.out.println(object.property("FallbackMaterial"));
+			Entities.ExportedObject fallback = pkg.objectByRef(((Properties.ObjectProperty)object.property("FallbackMaterial")).value);
+			Objects.Object fallbackObj = fallback.object();
+			if (fallbackObj instanceof Objects.Texture) {
+				Objects.Texture.MipMap[] mipMaps = ((Objects.Texture)fallbackObj).mipMaps();
+				BufferedImage bufferedImage = mipMaps[0].get();
+				ImageIO.write(bufferedImage, "png", new File("/tmp/screenshot.png"));
+			}
+
 		}
 
 //		System.out.println(((Properties.ObjectProperty)levelInfo.object().property("Screenshot")).value.get());

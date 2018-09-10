@@ -116,7 +116,10 @@ public interface Objects {
 			RGB16,
 			DXT1,
 			RBG8,
-			RGBA8
+			RGBA8,
+			UNKNOWN, // dunno what this might be
+			DXT3,
+			DXT5
 		}
 
 		public Texture(
@@ -222,23 +225,23 @@ public interface Objects {
 			}
 
 			public BufferedImage get() {
-				// see https://github.com/acmi/l2tool/blob/master/src/main/java/acmi/l2/clientmod/l2tool/img/P8.java
 				byte[] data = texture.readImage(this);
 
 				// read texture properties, look for "Format", support P8 or DXT1
 				switch (texture.format()) {
 					case PALETTE_8_BIT:
+						// see https://github.com/acmi/l2tool/blob/master/src/main/java/acmi/l2/clientmod/l2tool/img/P8.java
+
 						// read Palette from properties
 						Palette palette = texture.palette();
 						if (palette == null) throw new IllegalStateException("Could not find palette for texture");
 
-						BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
-						System.arraycopy(data, 0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData(), 0, data.length);
-						return image;
+						BufferedImage p8img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
+						System.arraycopy(data, 0, ((DataBufferByte)p8img.getRaster().getDataBuffer()).getData(), 0, data.length);
+						return p8img;
 					case DXT1:
 					default:
 						throw new UnsupportedOperationException("Not implemented");
-
 				}
 			}
 		}
