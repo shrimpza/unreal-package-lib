@@ -381,7 +381,7 @@ public class Package {
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
 		long propsLength = reader.currentReadPosition();
 
-		Object newObject = ObjectFactory.newInstance(this, export, header, properties, (int)propsLength);
+		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, (int)propsLength);
 
 		loadedObjects.put(export.pos, newObject);
 
