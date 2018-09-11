@@ -112,12 +112,16 @@ public class Package {
 	// cache of already-parsed/read objects, simply keyed by file position
 	private final WeakHashMap<Integer, Object> loadedObjects;
 
-	public Package(Path pkg) throws IOException {
-		this.reader = new PackageReader(pkg);
+	public Package(Path packageFile) throws IOException {
+		this(new PackageReader(packageFile));
+	}
+
+	public Package(PackageReader reader) {
+		this.reader = reader;
 
 		reader.moveTo(0); // overly explicit start from the start
 
-		if (reader.readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("File " + pkg + " does not seem to be an Unreal package");
+		if (reader.readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("Package does not seem to be an Unreal package");
 
 		this.version = reader.readShort();
 		this.license = reader.readShort();
