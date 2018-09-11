@@ -23,8 +23,8 @@ import net.shrimpworks.unreal.packages.entities.Named;
 import net.shrimpworks.unreal.packages.entities.ObjectFlag;
 import net.shrimpworks.unreal.packages.entities.ObjectReference;
 import net.shrimpworks.unreal.packages.entities.objects.Object;
-import net.shrimpworks.unreal.packages.entities.objects.ObjectHeader;
 import net.shrimpworks.unreal.packages.entities.objects.ObjectFactory;
+import net.shrimpworks.unreal.packages.entities.objects.ObjectHeader;
 import net.shrimpworks.unreal.packages.entities.properties.ArrayProperty;
 import net.shrimpworks.unreal.packages.entities.properties.BooleanProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
@@ -158,16 +158,19 @@ public class Package {
 		this.imports = imports(importCount, importPos);
 
 		// convenience - try to collect objects and fields into separate collections for easier management
-		this.objects = new ExportedObject[exports.length];
-		this.fields = new ExportedField[exports.length];
-		for (int i = 0; i < exports.length; i++) {
-			ExportedEntry e = (ExportedEntry)exports[i];
+		List<ExportedObject> tmpObj = new ArrayList<>();
+		List<ExportedField> tmpFld = new ArrayList<>();
+		for (Export export : exports) {
+			ExportedEntry e = (ExportedEntry)export;
 			if (FieldTypes.isField(e.objClass)) {
-				fields[i] = e.asField();
+				tmpFld.add(e.asField());
 			} else {
-				objects[i] = e.asObject();
+				tmpObj.add(e.asObject());
 			}
 		}
+
+		this.objects = tmpObj.toArray(new ExportedObject[0]);
+		this.fields = tmpFld.toArray(new ExportedField[0]);
 
 		this.loadedObjects = new WeakHashMap<>();
 	}
@@ -217,9 +220,10 @@ public class Package {
 	}
 
 	/**
-	 * Convenience to get all exported objects by a known class name.
+	 * Convenience to get an object by an object reference.
 	 *
-	 * @return matching objects
+	 * @return found object
+	 * @throws IllegalArgumentException the object could not be found or does not exist
 	 */
 	public ExportedObject objectByRef(ObjectReference ref) {
 		Named resolved = ref.get();
@@ -404,7 +408,7 @@ public class Package {
 
 		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
 		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
-		int lastBit = (propInfo & 0x80); // bit 7 is either array size, or boolean value
+		int lastBit = (propInfo & 0x80); // bit 7 is either array size (??), or boolean value
 
 		PropertyType propType = PropertyType.get(type);
 
@@ -412,7 +416,7 @@ public class Package {
 			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name));
 		}
 
-		// if array and not boolean, next byte is index of property within the array
+		// if array and not boolean, next byte is index of property within the array (??)
 		int arrayIndex = 0;
 		if (lastBit != 0 && propType != PropertyType.BooleanProperty) {
 			arrayIndex = reader.readByte();
