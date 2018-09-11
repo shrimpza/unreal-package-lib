@@ -1,4 +1,4 @@
-package net.shrimpworks.unreal.archive;
+package net.shrimpworks.unreal.packages;
 
 import org.junit.Test;
 

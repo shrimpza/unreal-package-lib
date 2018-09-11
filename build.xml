@@ -4,7 +4,7 @@
 	<property name="module.version" value="1.0"/>
 
 	<!-- for a runnable jar file, add the main class name -->
-	<property name="main.class" value="net.shrimpworks.unreal.archive.Main"/>
+	<property name="main.class" value="net.shrimpworks.unreal.packages.Main"/>
 
 	<!-- JDK source and target versions -->
 	<property name="src.version" value="1.8"/>

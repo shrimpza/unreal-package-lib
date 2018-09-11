@@ -4,7 +4,7 @@
  * All Rights Reserved.
  */
 
-package net.shrimpworks.unreal.archive.util.dxt;
+package net.shrimpworks.unreal.packages.entities.objects.dxt;
 
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
