@@ -34,6 +34,14 @@ public class PackageReader {
 
 	// --- buffer positioning and management
 
+	public long size() {
+		try {
+			return channel.size();
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not determine size of package.");
+		}
+	}
+
 	public int position() {
 		return buffer.position();
 	}
@@ -221,7 +229,6 @@ public class PackageReader {
 			if (len > 0) {
 				byte[] val = new byte[len];
 				buffer.get(val);
-				assert readByte() == 0x00; // drain trailing NUL
 				name = new String(val, StandardCharsets.US_ASCII);
 			}
 		}
