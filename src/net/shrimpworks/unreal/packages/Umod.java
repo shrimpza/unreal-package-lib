@@ -107,9 +107,10 @@ public class Umod {
 
 		@Override
 		public int read(ByteBuffer dst) {
-			// this could not be more inefficient if it tried
+			if (position() == size) return -1;
+
 			int cnt = dst.position();
-			while (dst.position() < dst.capacity() && position() < size) {
+			while (dst.hasRemaining() && position() < size) {
 				dst.put(reader.readByte());
 				reader.ensureRemaining(1);
 			}

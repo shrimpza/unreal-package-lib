@@ -44,6 +44,8 @@ public class Package {
 
 	private static final int MAX_PROPERTIES = 256;
 
+	private static final String SHA1 = "SHA-1";
+
 	public enum PackageFlag {
 		AllowDownload(0x0001),    //	Allow downloading package
 		ClientOptional(0x0002),   //	Purely optional for clients
@@ -177,6 +179,10 @@ public class Package {
 		this.fields = tmpFld.toArray(new ExportedField[0]);
 
 		this.loadedObjects = new WeakHashMap<>();
+	}
+
+	public String sha1Hash() {
+		return reader.hash(SHA1);
 	}
 
 	/**

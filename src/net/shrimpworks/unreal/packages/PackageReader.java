@@ -8,6 +8,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.util.Arrays;
 
 /**
@@ -30,6 +31,32 @@ public class PackageReader {
 
 	public PackageReader(Path packageFile) throws IOException {
 		this(FileChannel.open(packageFile, StandardOpenOption.READ));
+	}
+
+	public String hash(String alg) {
+		try {
+			MessageDigest md = MessageDigest.getInstance(alg);
+
+			channel.position(0);
+			buffer.clear();
+			while (channel.read(buffer) > 0) {
+				buffer.flip();
+				md.update(buffer);
+				buffer.clear();
+			}
+
+			byte[] digest = md.digest();
+
+			StringBuilder sb = new StringBuilder();
+
+			for (byte b : digest) {
+				sb.append(Integer.toHexString((0xFF & b)));
+			}
+
+			return sb.toString();
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to generate hash for package.", e);
+		}
 	}
 
 	// --- buffer positioning and management

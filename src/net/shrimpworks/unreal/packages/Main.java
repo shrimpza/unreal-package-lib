@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import javax.imageio.ImageIO;
 
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
@@ -16,12 +15,15 @@ public class Main {
 
 	public static void main(String[] args) throws IOException {
 		Umod umod = new Umod(Paths.get("/home/shrimp/tmp/MonsterHunt.umod"));
-		System.out.println(Arrays.toString(umod.files));
+		System.out.println(umod.files[4].size);
 		Package pkg = new Package(new PackageReader(umod.files[4].read()));
 
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
 //		System.out.printf("Package version: %d%n", pkg.version);
+		long now = System.currentTimeMillis();
+		System.out.println(pkg.sha1Hash());
+		System.out.println(System.currentTimeMillis() - now);
 
 		// read level info (also in LevelSummary, but missing Screenshot)
 		ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
@@ -49,5 +51,7 @@ public class Main {
 			}
 
 		}
+
+		System.out.println(pkg.sha1Hash());
 	}
 }
