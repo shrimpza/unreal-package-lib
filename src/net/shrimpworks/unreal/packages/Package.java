@@ -38,6 +38,28 @@ import net.shrimpworks.unreal.packages.entities.properties.PropertyType;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
 import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
 
+/**
+ * An Unreal package.
+ * <p>
+ * Some common file extensions are <code>.u, .unr, .ut2, .utx</code>, and are
+ * used by Unreal Engine games for packaging content such as maps, textures,
+ * sounds, and the gameplay code itself.
+ * <p>
+ * Although the files all have different file extensions for organisation
+ * purposes only, they all have the same structure and are capable of holding
+ * the same content.
+ * <p>
+ * This implementation supports at least Unreal Engine 1 and 2, and has been
+ * tested using content and assets from Unreal, Unreal Tournament, and Unreal
+ * Tournament 2004. Your mileage may vary with other games using these engines.
+ * <p>
+ * Reading a packages exported objects and their properties is currently
+ * supported in this implementation. There is currently no support for
+ * extraction of data such as UnrealScript classes.
+ *
+ * See the {@link ObjectFactory} implementation for details on implementing
+ * additional object content readers.
+ */
 public class Package {
 
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;

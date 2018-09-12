@@ -8,6 +8,21 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * An Unreal modification package.
+ * <p>
+ * UMod files are used to bundle third party Unreal Engine 1 and 2 content,
+ * normally for more complex modifications with many files, rather than
+ * individual pieces of content like maps. The Unreal game in question will
+ * unpack these packages into their installation directories.
+ * <p>
+ * They may hold any content, not just Unreal {@link Package}s.
+ * <p>
+ * This implementation supports reading the file list, and then reading the
+ * individual files as {@link UmodFile}s, which may be either saved to disk
+ * or used in conjunction with the {@link Package} class to inspect and
+ * extract package contents without first unpacking the Umod.
+ */
 public class Umod {
 
 	private static final int UMOD_SIGNATURE = 0x9FE3C5A3;
@@ -15,7 +30,10 @@ public class Umod {
 	private final PackageReader reader;
 
 	public final int version;
+	public final int size;
 	public final UmodFile[] files;
+
+	// TODO probably expose the manifest as a collection of Properties
 
 	public Umod(Path umodFile) throws IOException {
 		this(new PackageReader(umodFile));
@@ -29,11 +47,11 @@ public class Umod {
 		if (reader.readInt() != UMOD_SIGNATURE) throw new IllegalArgumentException("Package does not seem to be a UMOD package");
 
 		final long filesOffset = reader.readInt();
-		final long size = reader.readInt();
-		this.version = reader.readInt();
-		final long checksum = reader.readInt();
 
-		System.out.println("o: " + filesOffset + " s: " + size + " v: " + version + " c: " + checksum);
+		this.size = reader.readInt(); // this is actually just the filesize; perhaps useful for validation
+		this.version = reader.readInt();
+
+		final long checksum = reader.readInt(); // cool story bro
 
 		// read the files directory/table
 		List<UmodFile> files = new ArrayList<>();
@@ -60,6 +78,9 @@ public class Umod {
 		return new UmodFile(name, size, offset, flags);
 	}
 
+	/**
+	 * Represents a single file entry in a Umod package.
+	 */
 	public class UmodFile {
 
 		public final String name;
@@ -68,13 +89,23 @@ public class Umod {
 		private final int offset;
 		private final int flags;
 
-		public UmodFile(String name, int size, int offset, int flags) {
+		private UmodFile(String name, int size, int offset, int flags) {
 			this.name = name;
 			this.size = size;
 			this.offset = offset;
 			this.flags = flags;
 		}
 
+		/**
+		 * Get a byte channel exposing the contents of this file.
+		 * <p>
+		 * This channel may be used in conjunction with a {@link PackageReader}
+		 * and {@link Package} to inspect the contents of Unreal packages
+		 * without the need to extract them first, or may simply be written to
+		 * a file on disk.
+		 *
+		 * @return a byte channel
+		 */
 		public SeekableByteChannel read() {
 			// provide a channel which presents the contents of this file as a standalone-seeming channel
 			return new UmodFileChannel(reader, offset, size);
