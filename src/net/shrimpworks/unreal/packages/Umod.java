@@ -1,6 +1,7 @@
 package net.shrimpworks.unreal.packages;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -59,7 +60,7 @@ public class Umod {
 		return new UmodFile(name, size, offset, flags);
 	}
 
-	public static class UmodFile {
+	public class UmodFile {
 
 		public final String name;
 		public final int size;
@@ -75,13 +76,81 @@ public class Umod {
 		}
 
 		public SeekableByteChannel read() {
-			// TODO provide a channel which presents the contents of this file as a standalone-seeming channel
-			throw new UnsupportedOperationException("Not implemented");
+			// provide a channel which presents the contents of this file as a standalone-seeming channel
+			return new UmodFileChannel(reader, offset, size);
 		}
 
 		@Override
 		public String toString() {
 			return String.format("UmodFile [name=%s]", name);
+		}
+	}
+
+	/**
+	 * A simple channel implementation which remains within the bounds of a
+	 * file within a Umod archive.
+	 */
+	public static class UmodFileChannel implements SeekableByteChannel {
+
+		private final PackageReader reader;
+
+		private final int offset;
+		private final int size;
+
+		public UmodFileChannel(PackageReader reader, int offset, int size) {
+			this.reader = reader;
+			this.offset = offset;
+			this.size = size;
+
+			reader.moveTo(offset);
+		}
+
+		@Override
+		public int read(ByteBuffer dst) {
+			// this could not be more inefficient if it tried
+			int cnt = dst.position();
+			while (dst.position() < dst.capacity() && position() < size) {
+				dst.put(reader.readByte());
+				reader.ensureRemaining(1);
+			}
+			return dst.position() - cnt;
+		}
+
+		@Override
+		public long position() {
+			return reader.currentPosition() - offset;
+		}
+
+		@Override
+		public SeekableByteChannel position(long newPosition) {
+			if (newPosition > size) throw new IllegalArgumentException("Cannot seek beyond size " + size);
+			reader.moveTo(offset + newPosition);
+			return this;
+		}
+
+		@Override
+		public long size() {
+			return size;
+		}
+
+		@Override
+		public SeekableByteChannel truncate(long size) {
+			throw new UnsupportedOperationException("Truncate not supported");
+		}
+
+		@Override
+		public int write(ByteBuffer src) {
+			throw new UnsupportedOperationException("Write not supported");
+		}
+
+		@Override
+		public boolean isOpen() {
+			return true;
+		}
+
+		@Override
+		public void close() {
+			// no-op
 		}
 	}
 }

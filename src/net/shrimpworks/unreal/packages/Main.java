@@ -17,10 +17,11 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		Umod umod = new Umod(Paths.get("/home/shrimp/tmp/MonsterHunt.umod"));
 		System.out.println(Arrays.toString(umod.files));
+		Package pkg = new Package(new PackageReader(umod.files[4].read()));
 
 //		Package pkg = new Package(Paths.get("/home/shrimp/tmp/SCR-CityStreet.unr"));
-		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
-		System.out.printf("Package version: %d%n", pkg.version);
+//		Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Gael.ut2"));
+//		System.out.printf("Package version: %d%n", pkg.version);
 
 		// read level info (also in LevelSummary, but missing Screenshot)
 		ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
