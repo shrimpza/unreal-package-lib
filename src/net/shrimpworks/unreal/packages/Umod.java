@@ -121,14 +121,14 @@ public class Umod {
 	 * A simple channel implementation which remains within the bounds of a
 	 * file within a Umod archive.
 	 */
-	public static class UmodFileChannel implements SeekableByteChannel {
+	private static class UmodFileChannel implements SeekableByteChannel {
 
 		private final PackageReader reader;
 
 		private final int offset;
 		private final int size;
 
-		public UmodFileChannel(PackageReader reader, int offset, int size) {
+		private UmodFileChannel(PackageReader reader, int offset, int size) {
 			this.reader = reader;
 			this.offset = offset;
 			this.size = size;
