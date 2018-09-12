@@ -110,10 +110,13 @@ public class Umod {
 			if (position() == size) return -1;
 
 			int cnt = dst.position();
-			while (dst.hasRemaining() && position() < size) {
-				dst.put(reader.readByte());
-				reader.ensureRemaining(1);
-			}
+			int remain = (int)(size - position());
+			byte[] buff = new byte[Math.min(dst.remaining(), remain)]; // possibly expensive if using a large buffer
+
+			reader.ensureRemaining(buff.length);
+			int read = reader.readBytes(buff, 0, buff.length);
+			dst.put(buff, 0, read);
+
 			return dst.position() - cnt;
 		}
 

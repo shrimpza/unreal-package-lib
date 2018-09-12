@@ -46,13 +46,10 @@ public class PackageReader {
 			}
 
 			byte[] digest = md.digest();
-
 			StringBuilder sb = new StringBuilder();
-
 			for (byte b : digest) {
 				sb.append(Integer.toHexString((0xFF & b)));
 			}
-
 			return sb.toString();
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to generate hash for package.", e);
