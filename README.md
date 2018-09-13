@@ -62,3 +62,16 @@ ImageIO.write(mipMaps[0].get(), "png", Path.get("scheenshot.png").toFile());
 
 For further usage examples, including reading of a umod file, refer to the 
 unit tests.
+
+
+## Building
+
+Building the project requires Ant. From the project root directory, execute:
+
+```bash
+ant dist     # build the project 
+ant test     # run tests
+```
+
+Following a `dist` build, the `dist/` directory will include a `.jar` file
+suitable for inclusion in your project.  

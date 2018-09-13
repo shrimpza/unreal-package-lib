@@ -135,7 +135,7 @@
 			<zipfileset dir="${src.dir}" excludes="**/*.java"/>
 		</jar>
 
-		<zip destfile="${dist.dir}/${ant.project.name}.zip">
+		<zip destfile="${dist.dir}/${ant.project.name}-dist.zip">
 			<zipfileset dir="${dist.dir}/lib" prefix="lib"/>
 			<fileset dir="${dist.dir}" includes="${ant.project.name}.jar"/>
 		</zip>
@@ -148,7 +148,7 @@
 			<classpath refid="default.classpath"/>
 			<classpath refid="test.classpath"/>
 		</javac>
-		<copy todir="${build.src.dir}">
+		<copy todir="${build.test.dir}">
 			<fileset dir="resources/test"/>
 		</copy>
 
