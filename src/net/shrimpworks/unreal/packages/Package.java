@@ -53,7 +53,7 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
  * tested using content and assets from Unreal, Unreal Tournament, and Unreal
  * Tournament 2004. Your mileage may vary with other games using these engines.
  * <p>
- * Reading a packages exported objects and their properties is currently
+ * Reading a packages' exported objects and their properties is currently
  * supported in this implementation. There is currently no support for
  * extraction of data such as UnrealScript classes.
  *
