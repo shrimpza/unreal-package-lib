@@ -8,3 +8,7 @@
 ## DDS/DXT Format Notes:
 
 http://www.buckarooshangar.com/flightgear/tut_dds.html
+
+## Umod File format:
+
+- http://www.unrealtexture.com/Unreal/Downloads/3DEditing/UnrealEd/Tutorials/unrealwiki-offline/umod-file-format.html

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Umod File Format</title>
+	<style>
+		table, td {
+			border: 1px solid black;
+			padding: 5px;
+			border-spacing: 0;
+			border-collapse: collapse;
+		}
+	</style>
+</head>
+<body>
+<h1 class='pagetitle'><a href="umod.html">UMOD</a>/<a href="http://wiki.beyondunreal.com/wiki?search=&quot;File+Format&quot;">File
+	Format</a></h1>
+<div><p>If you want to create your own tool for building or extracting files from <a href="umod.html">UMOD</a> installers, you'll need
+	knowledge about their internal structure.</p>
+	<h2><a name="0.1"></a>Basic structure</h2>
+	<p>A UMOD installer file consists of three parts:</p>
+	<ol>
+		<li>First comes the (uncompressed) content of all files that are contained in the UMOD installer.</li>
+		<li>After that, a list of files including their offset and length (and some more information which is detailed below) follows.</li>
+		<li>At the very end of the UMOD file (with a fixed offset from the file end), the UMOD file "header" is stored.</li>
+	</ol>
+	<p>The UMOD installer must contain a file <code>Manifest.ini</code> that describes the target locations of the files, the installed mod's
+		requirements and other details, and <code>Manifest.int</code> that contains the textual captions and descriptions used in the installer. See
+		<a href="umod-creating.html">/Creating</a> on how to set up those files.</p>
+	<h2><a name="0.2"></a>Parts</h2>
+	<p>Described in reverse order of their appearance in the file, since this is the order they'll be parsed when <em>reading</em> the UMOD
+		file.</p>
+	<h3><a name="0.2.1"></a>UMOD file "header"</h3>
+	<p>The UMOD file header is 20 bytes long. The header is stored in the last 20 bytes of the file (hence the quotes around the term
+		"header").</p>
+	<table border=0 cellspacing=0 cellpadding=0>
+		<tr valign=top>
+			<td align=right><em>Offset<em></em></em></td>
+			<td align=right><em>Length</em></td>
+			<td><em>Type</em></td>
+			<td><em>Description</em></td>
+		</tr>
+		<tr valign=top>
+			<td align=right>0</td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Magic number. Used to verify this file as a UMOD installer. Always 0x9FE3C5A3.</td>
+		</tr>
+		<tr valign=top>
+			<td align=right>4</td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Byte offset of file directory in the UMOD file. (See below.)</td>
+		</tr>
+		<tr valign=top>
+			<td align=right>8</td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Total byte size of the UMOD file.</td>
+		</tr>
+		<tr valign=top>
+			<td align=right>12</td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>UMOD file version.</td>
+		</tr>
+		<tr valign=top>
+			<td align=right>16</td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td><a href="crc32.html">CRC32</a> checksum over the file content.</td>
+		</tr>
+	</table>
+	<p><em>Mychaeel:</em> That CRC32 checksum needs further investigation... It's just a guess that the checksum goes over the file content
+		(first part of UMOD file) only. Besides, I've been running into problems trying to verify UnrealScript source code TextBuffer checksums
+		using a standard CRC32 algorithm with a standard seed &ndash; or I didn't feed it the right data. Any help?</p>
+	<h3><a name="0.2.2"></a>File directory</h3>
+	<p>The file directory describes the files stored in the first part of the UMOD file. Its byte offset in the UMOD file is given in the file
+		"header" (see above).</p>
+	<p>The directory consists of an <em>index</em>-type file count (the <em>index</em> data type is described below), followed by
+		variable-size records, each describing one file in the UMOD installer.</p>
+	<table border=0 cellspacing=0 cellpadding=0>
+		<tr valign=top>
+			<td align=right><em>Offset</em></td>
+			<td align=right><em>Length</em></td>
+			<td><em>Type</em></td>
+			<td><em>Description</em></td>
+		</tr>
+		<tr valign=top>
+			<td align=right>0</td>
+			<td>variable</td>
+			<td>index</td>
+			<td>Length of file name (including trailing null byte).</td>
+		</tr>
+		<tr valign=top>
+			<td></td>
+			<td>variable</td>
+			<td>char</td>
+			<td>File name, with trailing null byte.</td>
+		</tr>
+		<tr valign=top>
+			<td></td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Byte offset of file in UMOD file.</td>
+		</tr>
+		<tr valign=top>
+			<td></td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Byte length of file.</td>
+		</tr>
+		<tr valign=top>
+			<td></td>
+			<td align=right>4</td>
+			<td>unsigned int</td>
+			<td>Bit field describing file flags. (See below.)</td>
+		</tr>
+	</table>
+	<p><em>Mychaeel:</em> Feel free to investigate and contribute information about the file flags. (I know that they have to be set to 0x03
+		for <code>Manifest.ini</code> and <code>Manifest.int</code> to prevent those files from being copied to the user's System directory, and set to
+		0x00 for all other files.)</p>
+	<h3><a name="0.2.3"></a>Files</h3>
+	<p>The files are stored without compression starting from byte 0 of the file, one after another, with no padding or separators between
+		them. Their respective byte offsets in the file are specified by the file directory (see above).</p>
+	<h2><a name="0.3"></a>Data details</h2>
+	<p>Specifications of the integer and index values can be found: <a href="package-file-format-data-de.html">Package File Format/Data
+		Details</a></p>
+</body>
+</html>
