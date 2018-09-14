@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.GZIPInputStream;
 
@@ -31,13 +32,9 @@ public class UmodTest {
 		// TODO we could actually try to get a SeekableByteChannel out of something, rather
 		tmpMod = Files.createTempFile("test-mod-", ".umod");
 		try (InputStream is = getClass().getResourceAsStream("MonsterHunt.umod.gz");
-			 GZIPInputStream gis = new GZIPInputStream(is);
-			 OutputStream os = Files.newOutputStream(tmpMod, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+			 GZIPInputStream gis = new GZIPInputStream(is)) {
 
-			byte[] buffer = new byte[1024];
-
-			int length;
-			while ((length = gis.read(buffer)) != -1) os.write(buffer, 0, length);
+			Files.copy(gis, tmpMod, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 

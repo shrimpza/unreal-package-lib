@@ -3,10 +3,9 @@ package net.shrimpworks.unreal.packages;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.StandardCopyOption;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -34,13 +33,9 @@ public class PackageTest {
 		// TODO we could actually try to get a SeekableByteChannel out of something, rather
 		tmpMap = Files.createTempFile("test-map-", ".unr");
 		try (InputStream is = getClass().getResourceAsStream("SCR-CityStreet.unr.gz");
-			 GZIPInputStream gis = new GZIPInputStream(is);
-			 OutputStream os = Files.newOutputStream(tmpMap, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+			 GZIPInputStream gis = new GZIPInputStream(is)) {
 
-			byte[] buffer = new byte[1024];
-
-			int length;
-			while ((length = gis.read(buffer)) != -1) os.write(buffer, 0, length);
+			Files.copy(gis, tmpMap, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
