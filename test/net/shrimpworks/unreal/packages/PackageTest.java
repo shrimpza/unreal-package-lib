@@ -46,40 +46,40 @@ public class PackageTest {
 
 	@Test
 	public void readLevelInfo() throws IOException {
-		Package pkg = new Package(tmpMap);
-		assertNotNull(pkg.sha1Hash());
+		try (Package pkg = new Package(tmpMap)) {
+			assertNotNull(pkg.sha1Hash());
 
-		// read level info (also in LevelSummary, but missing Screenshot)
-		ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
-		Object level = levelInfo.object();
+			// read level info (also in LevelSummary, but missing Screenshot)
+			ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
+			Object level = levelInfo.object();
 
-		// read some basic level info
-		assertEquals("Kenneth \"Shrimp\" Watson", ((StringProperty)level.property("Author")).value);
-		assertEquals("City Street", ((StringProperty)level.property("Title")).value);
+			// read some basic level info
+			assertEquals("Kenneth \"Shrimp\" Watson", ((StringProperty)level.property("Author")).value);
+			assertEquals("City Street", ((StringProperty)level.property("Title")).value);
 
-		// get the screenshot, and then save it to file
-		Property shotProp = level.property("Screenshot");
-		assertTrue(shotProp instanceof ObjectProperty);
+			// get the screenshot, and then save it to file
+			Property shotProp = level.property("Screenshot");
+			assertTrue(shotProp instanceof ObjectProperty);
 
-		ExportedObject screenshot = pkg.objectByRef(((ObjectProperty)shotProp).value);
-		Object object = screenshot.object();
+			ExportedObject screenshot = pkg.objectByRef(((ObjectProperty)shotProp).value);
+			Object object = screenshot.object();
 
-		assertTrue(object instanceof Texture);
+			assertTrue(object instanceof Texture);
 
-		Path tmpScreenshot = Files.createTempFile("test-ss-", ".png");
+			Path tmpScreenshot = Files.createTempFile("test-ss-", ".png");
 
-		try {
-			Texture.MipMap[] mipMaps = ((Texture)object).mipMaps();
-			BufferedImage bufferedImage = mipMaps[0].get();
-			ImageIO.write(bufferedImage, "png", tmpScreenshot.toFile());
+			try {
+				Texture.MipMap[] mipMaps = ((Texture)object).mipMaps();
+				BufferedImage bufferedImage = mipMaps[0].get();
+				ImageIO.write(bufferedImage, "png", tmpScreenshot.toFile());
 
-			// attempt to load the saved screenshot, should work if it was written correctly
-			assertNotNull(ImageIO.read(tmpScreenshot.toFile()));
-		} finally {
-			Files.deleteIfExists(tmpScreenshot);
-		}
+				// attempt to load the saved screenshot, should work if it was written correctly
+				assertNotNull(ImageIO.read(tmpScreenshot.toFile()));
+			} finally {
+				Files.deleteIfExists(tmpScreenshot);
+			}
 
-		// TODO add test read UT2003/4 screenshots - maps are just big though
+			// TODO add test read UT2003/4 screenshots - maps are just big though
 //		if (object.className().equals("MaterialSequence")) {
 //			System.out.println(object.property("FallbackMaterial"));
 //			ExportedObject fallback = pkg.objectByRef(((ObjectProperty)object.property("FallbackMaterial")).value);
@@ -90,5 +90,6 @@ public class PackageTest {
 //				ImageIO.write(bufferedImage, "png", new File("/tmp/screenshot.png"));
 //			}
 //		}
+		}
 	}
 }

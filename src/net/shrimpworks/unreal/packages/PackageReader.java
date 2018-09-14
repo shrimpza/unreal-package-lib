@@ -1,5 +1,6 @@
 package net.shrimpworks.unreal.packages;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -18,7 +19,7 @@ import java.util.Arrays;
  * Manages the buffers and navigation and read operations within package files
  * required for parsing a package's contents.
  */
-public class PackageReader {
+public class PackageReader implements Closeable {
 
 	private final SeekableByteChannel channel;
 	private final ByteBuffer buffer;
@@ -31,6 +32,11 @@ public class PackageReader {
 
 	public PackageReader(Path packageFile) throws IOException {
 		this(FileChannel.open(packageFile, StandardOpenOption.READ));
+	}
+
+	@Override
+	public void close() throws IOException {
+		channel.close();
 	}
 
 	public String hash(String alg) {

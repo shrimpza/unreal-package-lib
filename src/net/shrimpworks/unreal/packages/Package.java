@@ -1,5 +1,6 @@
 package net.shrimpworks.unreal.packages;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
  * See the {@link ObjectFactory} implementation for details on implementing
  * additional object content readers.
  */
-public class Package {
+public class Package implements Closeable {
 
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;
 
@@ -201,6 +202,11 @@ public class Package {
 		this.fields = tmpFld.toArray(new ExportedField[0]);
 
 		this.loadedObjects = new WeakHashMap<>();
+	}
+
+	@Override
+	public void close() throws IOException {
+		this.reader.close();
 	}
 
 	public String sha1Hash() {

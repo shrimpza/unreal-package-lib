@@ -45,26 +45,27 @@ public class UmodTest {
 
 	@Test
 	public void umod() throws IOException {
-		Umod umod = new Umod(tmpMod);
+		try (Umod umod = new Umod(tmpMod)) {
 
-		// lets find a random map in the package
-		boolean found = false;
-		for (Umod.UmodFile file : umod.files) {
-			if (file.name.endsWith(".unr")) {
-				Package pkg = new Package(new PackageReader(file.read()));
+			// lets find a random map in the package
+			boolean found = false;
+			for (Umod.UmodFile file : umod.files) {
+				if (file.name.endsWith(".unr")) {
+					Package pkg = new Package(new PackageReader(file.read()));
 
-				assertNotNull(pkg.sha1Hash());
+					assertNotNull(pkg.sha1Hash());
 
-				ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
-				Object level = levelInfo.object();
+					ExportedObject levelInfo = pkg.objectsByClassName("LevelInfo").iterator().next();
+					Object level = levelInfo.object();
 
-				assertEquals("Kenneth \"Shrimp\" Watson", ((StringProperty)level.property("Author")).value);
+					assertEquals("Kenneth \"Shrimp\" Watson", ((StringProperty)level.property("Author")).value);
 
-				found = true;
-				break;
+					found = true;
+					break;
+				}
 			}
-		}
 
-		assertTrue(found);
+			assertTrue(found);
+		}
 	}
 }

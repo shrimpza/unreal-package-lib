@@ -1,5 +1,6 @@
 package net.shrimpworks.unreal.packages;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -23,7 +24,7 @@ import java.util.List;
  * or used in conjunction with the {@link Package} class to inspect and
  * extract package contents without first unpacking the Umod.
  */
-public class Umod {
+public class Umod implements Closeable {
 
 	private static final int UMOD_SIGNATURE = 0x9FE3C5A3;
 
@@ -64,6 +65,11 @@ public class Umod {
 		}
 
 		this.files = files.toArray(new UmodFile[0]);
+	}
+
+	@Override
+	public void close() throws IOException {
+		this.reader.close();
 	}
 
 	private UmodFile readFile() {
