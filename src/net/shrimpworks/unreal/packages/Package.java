@@ -97,7 +97,7 @@ public class Package {
 	 * <ul>
 	 * <li><= 68 Unreal</li>
 	 * <li>>= 69 Unreal Tournament</li>
-	 * <li>>= 100(?) UE2 (UT2003/4)</li>
+	 * <li>>= 117(?) UE2 (UT2003/4)</li>
 	 * </ul>
 	 */
 	public final int version;
