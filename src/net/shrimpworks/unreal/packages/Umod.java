@@ -117,6 +117,18 @@ public class Umod implements Closeable {
 			return new UmodFileChannel(reader, offset, size);
 		}
 
+		/**
+		 * Utility to get the SHA-1 hash for this file.
+		 *
+		 * @return sha1 hash string
+		 * @throws IOException read failure
+		 */
+		public String sha1() throws IOException {
+			try (PackageReader reader = new PackageReader(read())) {
+				return reader.hash("SHA-1");
+			}
+		}
+
 		@Override
 		public String toString() {
 			return String.format("UmodFile [name=%s]", name);

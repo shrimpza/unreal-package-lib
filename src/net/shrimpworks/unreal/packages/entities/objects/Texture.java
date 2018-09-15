@@ -163,7 +163,8 @@ public class Texture extends Object {
 				case DXT3:
 					return DXT3Decompressor.decompress(data, width, height);
 				default:
-					throw new UnsupportedOperationException("Reading textures in format " + texture.format() + " not supported");
+					throw new UnsupportedOperationException("Reading texture " + texture.export.name.name
+															+ " in format " + texture.format() + " not supported");
 			}
 		}
 	}
