@@ -459,18 +459,12 @@ public class Package implements Closeable {
 
 		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
 		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
-		int lastBit = (propInfo & 0x80); // bit 7 is either array size (??), or boolean value
+		boolean arrayFlag = (propInfo & 0x80) != 0; // bit 7 is either array size (??), or boolean value
 
 		PropertyType propType = PropertyType.get(type);
 
 		if (propType == null) {
 			throw new IllegalStateException(String.format("Unknown property type index %d for property %s", type, name.name));
-		}
-
-		// if array and not boolean, next byte is index of property within the array (??)
-		int arrayIndex = 0;
-		if (lastBit != 0 && propType != PropertyType.BooleanProperty) {
-			arrayIndex = reader.readByte();
 		}
 
 		// When a struct, type of struct follows before size and body
@@ -495,14 +489,20 @@ public class Package implements Closeable {
 			case 4:
 				size = 16; break;
 			case 5:
-				size = reader.readByte(); break;
+				size = reader.readByte() & 0xFF; break;
 			case 6:
 				size = reader.readShort(); break;
 			case 7:
 				size = reader.readInt(); break;
 		}
 
-		return createProperty(name, propType, structType, arrayIndex, size, lastBit);
+		// if array and not boolean, next byte is index of property within the array (??)
+		int arrayIndex = 0;
+		if (arrayFlag && propType != PropertyType.BooleanProperty) {
+			arrayIndex = reader.readByte();
+		}
+
+		return createProperty(name, propType, structType, arrayIndex, size, arrayFlag);
 	}
 
 	/**
@@ -514,18 +514,18 @@ public class Package implements Closeable {
 	 * @param structType if a struct property, the struct type
 	 * @param arrayIndex in an array property, the index of this property within an array
 	 * @param size       the byte length of the property
-	 * @param flagBit    the final bit of the property header, sometimes used to infer things
+	 * @param arrayFlag  the final bit of the property header, sometimes used to infer things
 	 * @return a new property
 	 */
 	private Property createProperty(
-			Name name, PropertyType type, StructProperty.StructType structType, int arrayIndex, int size, int flagBit) {
+			Name name, PropertyType type, StructProperty.StructType structType, int arrayIndex, int size, boolean arrayFlag) {
 
 		int startPos = reader.position();
 
 		try {
 			switch (type) {
 				case BooleanProperty:
-					return new BooleanProperty(this, name, flagBit > 0);
+					return new BooleanProperty(this, name, arrayFlag);
 				case ByteProperty:
 					return new ByteProperty(this, name, reader.readByte());
 				case IntegerProperty:

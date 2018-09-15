@@ -243,7 +243,7 @@ public class PackageReader implements Closeable {
 	 * @return a string
 	 */
 	public String readString(int packageVersion) {
-		String name = "";
+		String string = "";
 
 		if (packageVersion < 64) {
 			// read to NUL/0x00
@@ -253,16 +253,17 @@ public class PackageReader implements Closeable {
 				val[len] = v;
 				len++;
 			}
-			if (len > 0) name = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.US_ASCII);
+			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.US_ASCII);
 		} else {
-			byte len = readByte();
+			int len = readByte() & 0xFF;
 			if (len > 0) {
 				byte[] val = new byte[len];
+				ensureRemaining(len);
 				buffer.get(val);
-				name = new String(val, StandardCharsets.US_ASCII);
+				string = new String(val, StandardCharsets.US_ASCII);
 			}
 		}
 
-		return name.trim();
+		return string.trim();
 	}
 }
