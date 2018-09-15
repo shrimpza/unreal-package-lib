@@ -10,6 +10,7 @@ import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.Named;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT1Decompressor;
+import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT3Decompressor;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
@@ -147,6 +148,7 @@ public class Texture extends Object {
 				case RBG8:
 				case RGBA8:
 					// i don't actually know enough about image processing at the moment to make this better...
+					// this actually works for DXT3 as well, but the DXT3Decompressor does not work for it, so keep my hack for now
 					BufferedImage rgbImg = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
 					for (int i = 0; i < data.length; i += 4) {
 						byte[] dest = ((DataBufferByte)rgbImg.getRaster().getDataBuffer()).getData();
@@ -157,9 +159,11 @@ public class Texture extends Object {
 					}
 					return rgbImg;
 				case DXT1:
-					return DXT1Decompressor.decompressDXT1(data, width, height);
+					return DXT1Decompressor.decompress(data, width, height);
+				case DXT3:
+					return DXT3Decompressor.decompress(data, width, height);
 				default:
-					throw new UnsupportedOperationException("Not implemented");
+					throw new UnsupportedOperationException("Reading textures in format " + texture.format() + " not supported");
 			}
 		}
 	}
