@@ -57,7 +57,7 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
  * Reading a packages' exported objects and their properties is currently
  * supported in this implementation. There is currently no support for
  * extraction of data such as UnrealScript classes.
- *
+ * <p>
  * See the {@link ObjectFactory} implementation for details on implementing
  * additional object content readers.
  */
@@ -187,19 +187,16 @@ public class Package implements Closeable {
 		this.imports = imports(importCount, importPos);
 
 		// convenience - try to collect objects and fields into separate collections for easier management
-		List<ExportedObject> tmpObj = new ArrayList<>();
-		List<ExportedField> tmpFld = new ArrayList<>();
-		for (Export export : exports) {
-			ExportedEntry e = (ExportedEntry)export;
+		this.objects = new ExportedObject[exports.length];
+		this.fields = new ExportedField[exports.length];
+		for (int i = 0; i < exports.length; i++) {
+			ExportedEntry e = (ExportedEntry)exports[i];
 			if (FieldTypes.isField(e.objClass)) {
-				tmpFld.add(e.asField());
+				fields[i] = e.asField();
 			} else {
-				tmpObj.add(e.asObject());
+				objects[i] = e.asObject();
 			}
 		}
-
-		this.objects = tmpObj.toArray(new ExportedObject[0]);
-		this.fields = tmpFld.toArray(new ExportedField[0]);
 
 		this.loadedObjects = new WeakHashMap<>();
 	}
@@ -272,6 +269,22 @@ public class Package implements Closeable {
 		if (exportedObject == null) throw new IllegalArgumentException("Found export is not an object " + ref);
 
 		return exportedObject;
+	}
+
+	/**
+	 * Convenience to get an object by its name.
+	 *
+	 * @return found object
+	 * @throws IllegalArgumentException the object could not be found or does not exist
+	 */
+	public ExportedObject objectByName(Name name) {
+		for (ExportedObject object : objects) {
+			if (object == null) continue;
+
+			if (object.name.equals(name)) return object;
+		}
+
+		return null;
 	}
 
 	// --- primary data table readers

@@ -8,6 +8,7 @@
 ## DDS/DXT Format Notes:
 
 http://www.buckarooshangar.com/flightgear/tut_dds.html
+https://github.com/nasa/World-Wind-Java/tree/master/WorldWind/src/gov/nasa/worldwind/formats/dds
 
 ## Umod File format:
 

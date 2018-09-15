@@ -144,6 +144,18 @@ public class Texture extends Object {
 					BufferedImage p8Img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
 					System.arraycopy(data, 0, ((DataBufferByte)p8Img.getRaster().getDataBuffer()).getData(), 0, data.length);
 					return p8Img;
+				case RBG8:
+				case RGBA8:
+					// i don't actually know enough about image processing at the moment to make this better...
+					BufferedImage rgbImg = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
+					for (int i = 0; i < data.length; i += 4) {
+						byte[] dest = ((DataBufferByte)rgbImg.getRaster().getDataBuffer()).getData();
+						dest[i + 0] = data[i + 3];
+						dest[i + 1] = data[i + 0];
+						dest[i + 2] = data[i + 1];
+						dest[i + 3] = data[i + 2];
+					}
+					return rgbImg;
 				case DXT1:
 					return DXT1Decompressor.decompressDXT1(data, width, height);
 				default:
