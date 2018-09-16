@@ -2,6 +2,9 @@ package net.shrimpworks.unreal.packages.entities.objects;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferUShort;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Collection;
 
 import net.shrimpworks.unreal.packages.Package;
@@ -26,7 +29,9 @@ public class Texture extends Object {
 		RGBA8,
 		UNKNOWN, // dunno what this might be
 		DXT3,
-		DXT5
+		DXT5,
+		L8,
+		G16
 	}
 
 	public Texture(Package pkg, PackageReader reader, Export export, ObjectHeader header, Collection<Property> properties, int dataStart) {
@@ -145,6 +150,12 @@ public class Texture extends Object {
 					BufferedImage p8Img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_INDEXED, palette.colorModel());
 					System.arraycopy(data, 0, ((DataBufferByte)p8Img.getRaster().getDataBuffer()).getData(), 0, data.length);
 					return p8Img;
+				case G16:
+					short[] shortData = new short[data.length / 2];
+					ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shortData);
+					BufferedImage g16 = new BufferedImage(width, height, BufferedImage.TYPE_USHORT_GRAY);
+					System.arraycopy(shortData, 0, ((DataBufferUShort)g16.getRaster().getDataBuffer()).getData(), 0, shortData.length);
+					return g16;
 				case RBG8:
 				case RGBA8:
 					// i don't actually know enough about image processing at the moment to make this better...
