@@ -12,6 +12,7 @@ import net.shrimpworks.unreal.packages.PackageReader;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.Named;
+import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT5Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT1Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT3Decompressor;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
@@ -173,6 +174,8 @@ public class Texture extends Object {
 					return DXT1Decompressor.decompress(data, width, height);
 				case DXT3:
 					return DXT3Decompressor.decompress(data, width, height);
+				case DXT5:
+					return DXT5Decompressor.decompress(data, width, height);
 				default:
 					throw new UnsupportedOperationException("Reading texture " + texture.export.name.name
 															+ " in format " + texture.format() + " not supported");
