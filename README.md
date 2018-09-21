@@ -16,12 +16,16 @@ Tournament 2004. Your mileage may vary with other games using these engines.
 
 Also provided via the `Umod` class is the ability to read and extract the 
 contents of `.umod` installers, commonly used to distribute larger Unreal and 
-Unreal Tournament modifications. 
+Unreal Tournament modifications.
+
+Finally, reading of Unreal Engine's `.int` files is provided via the `IntFile`
+class, which simplifies processing some of the non-INI file like properties
+contained within these files.  
 
 ## Current Implementation
 
 - Reading all a packages' exported objects and their properties.
-- Read and export textures.
+- Read and export textures from most supported formats.
 - Light-weight memory efficient implementation.
 - Use Umod package contents in combination with the package reader, to allow
   inspecting and exporting objects without needing to extract the Umod 
