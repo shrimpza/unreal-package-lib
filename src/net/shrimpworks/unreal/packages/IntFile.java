@@ -61,7 +61,7 @@ public class IntFile {
 							for (String s : m.group(1).trim().split(",")) {
 								m = KEY_VALUE.matcher(s);
 								if (m.matches()) {
-									vals.put(m.group(1).trim(), m.group(2).trim());
+									vals.put(m.group(1).trim(), m.group(2).trim().replaceAll("\"", ""));
 								}
 							}
 							value = new MapValue(vals);
@@ -150,7 +150,7 @@ public class IntFile {
 			Value val = value(key);
 			if (val instanceof ListValue) return (ListValue)val;
 			if (val != null) return new ListValue(Collections.singletonList(val));
-			return null;
+			return new ListValue(Collections.emptyList());
 		}
 
 		@Override
