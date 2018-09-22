@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Provides a simple <code>.int</code> file reader implementations, supporting
@@ -29,14 +30,14 @@ public class IntFile {
 
 	private static final Pattern MAP_VALUE = Pattern.compile("\\s*\\(([^)]*)\\)");
 
-	private final Map<String, Section> sections;
+	private final List<Section> sections;
 
 	public IntFile(Path intFile) throws IOException {
 		this(FileChannel.open(intFile, StandardOpenOption.READ));
 	}
 
 	public IntFile(SeekableByteChannel channel) throws IOException {
-		this.sections = new HashMap<>();
+		this.sections = new ArrayList<>();
 
 		try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
 			String r;
@@ -45,7 +46,7 @@ public class IntFile {
 				Matcher m = SECTION.matcher(r);
 				if (m.matches()) {
 					section = new Section(m.group(1).trim(), new HashMap<>());
-					sections.put(section.name, section);
+					sections.add(section);
 				} else if (section != null) {
 					m = KEY_VALUE.matcher(r);
 					if (m.matches()) {
@@ -89,7 +90,7 @@ public class IntFile {
 	 * @return the section, or null if not found
 	 */
 	public Section section(String section) {
-		return sections.get(section);
+		return sections.stream().filter(s -> s.name.equalsIgnoreCase(section)).findFirst().orElse(null);
 	}
 
 	/**
@@ -98,7 +99,7 @@ public class IntFile {
 	 * @return section names
 	 */
 	public Collection<String> sections() {
-		return sections.keySet();
+		return sections.stream().map(s -> s.name).collect(Collectors.toList());
 	}
 
 	/**
