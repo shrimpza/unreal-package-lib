@@ -64,8 +64,59 @@ Texture.MipMap[] mipMaps = shot.mipMaps();
 ImageIO.write(mipMaps[0].get(), "png", Path.get("scheenshot.png").toFile());
 ```
 
-For further usage examples, including reading of a umod file, refer to the 
-unit tests.
+In this example, we unpack/extract the contents of a UMod file to dist:
+
+```java
+Path dest = Paths.get("/path/to/unpack/to"); 
+Umod umod = new Umod(Paths.get("path/to/file.umod"));
+
+// create a small buffer for file transfer
+ByteBuffer buffer = ByteBuffer.allocate(1024 * 8);
+
+for (Umod.UmodFile f : umod.files) {
+	// skip the umod's manifest (.ini, .ini) files
+	if (f.name.startsWith("System\\Manifest")) continue;
+
+	System.out.printf("Unpacking %s ", f.name);
+	Path out = dest.resolve(filePath(f.name));
+
+	// re-create the directory structure within the umod
+	if (!Files.exists(out)) Files.createDirectories(out);
+
+	out = out.resolve(fileName(f.name));
+
+	System.out.printf("to %s%n", out);
+
+	try (FileChannel fileChannel = FileChannel.open(out, StandardOpenOption.WRITE, StandardOpenOption.CREATE,
+													StandardOpenOption.TRUNCATE_EXISTING);
+		 SeekableByteChannel fileData = f.read()) {
+
+		// stream the file form the umod to disk
+		while (fileData.read(buffer) > 0) {
+			fileData.read(buffer);
+			buffer.flip();
+			fileChannel.write(buffer);
+			buffer.clear();
+		}
+	}
+}
+
+// --- file name and path utility functions used during unpacking
+
+private String fileName(String path) {
+	String tmp = path.replaceAll("\\\\", "/");
+	return tmp.substring(Math.max(0, tmp.lastIndexOf("/") + 1));
+}
+
+private String filePath(String path) {
+	String tmp = path.replaceAll("\\\\", "/");
+	return tmp.substring(0, Math.max(0, tmp.lastIndexOf("/")));
+}
+
+```
+
+For further usage examples, including reading of a umod packages contents in 
+combination with the Package reader, refer to the unit tests.
 
 
 ## Building
