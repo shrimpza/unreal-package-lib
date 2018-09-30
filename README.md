@@ -74,43 +74,43 @@ Umod umod = new Umod(Paths.get("path/to/file.umod"));
 ByteBuffer buffer = ByteBuffer.allocate(1024 * 8);
 
 for (Umod.UmodFile f : umod.files) {
-	// skip the umod's manifest (.ini, .ini) files
-	if (f.name.startsWith("System\\Manifest")) continue;
+  // skip the umod's manifest (.ini, .ini) files
+  if (f.name.startsWith("System\\Manifest")) continue;
 
-	System.out.printf("Unpacking %s ", f.name);
-	Path out = dest.resolve(filePath(f.name));
+  System.out.printf("Unpacking %s ", f.name);
+  Path out = dest.resolve(filePath(f.name));
 
-	// re-create the directory structure within the umod
-	if (!Files.exists(out)) Files.createDirectories(out);
+  // re-create the directory structure within the umod
+  if (!Files.exists(out)) Files.createDirectories(out);
 
-	out = out.resolve(fileName(f.name));
+  out = out.resolve(fileName(f.name));
+  System.out.printf("to %s%n", out);
 
-	System.out.printf("to %s%n", out);
+  try (FileChannel fileChannel = FileChannel.open(out, 
+       StandardOpenOption.WRITE, StandardOpenOption.CREATE, 
+       StandardOpenOption.TRUNCATE_EXISTING);
+    SeekableByteChannel fileData = f.read()) {
 
-	try (FileChannel fileChannel = FileChannel.open(out, StandardOpenOption.WRITE, StandardOpenOption.CREATE,
-													StandardOpenOption.TRUNCATE_EXISTING);
-		 SeekableByteChannel fileData = f.read()) {
-
-		// stream the file form the umod to disk
-		while (fileData.read(buffer) > 0) {
-			fileData.read(buffer);
-			buffer.flip();
-			fileChannel.write(buffer);
-			buffer.clear();
-		}
-	}
+    // stream the file form the umod to disk
+    while (fileData.read(buffer) > 0) {
+      fileData.read(buffer);
+      buffer.flip();
+      fileChannel.write(buffer);
+      buffer.clear();
+    }
+  }
 }
 
 // --- file name and path utility functions used during unpacking
 
 private String fileName(String path) {
-	String tmp = path.replaceAll("\\\\", "/");
-	return tmp.substring(Math.max(0, tmp.lastIndexOf("/") + 1));
+  String tmp = path.replaceAll("\\\\", "/");
+  return tmp.substring(Math.max(0, tmp.lastIndexOf("/") + 1));
 }
 
 private String filePath(String path) {
-	String tmp = path.replaceAll("\\\\", "/");
-	return tmp.substring(0, Math.max(0, tmp.lastIndexOf("/")));
+  String tmp = path.replaceAll("\\\\", "/");
+  return tmp.substring(0, Math.max(0, tmp.lastIndexOf("/")));
 }
 
 ```
