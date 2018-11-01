@@ -534,7 +534,7 @@ public class Package implements Closeable {
 					return new FloatProperty(this, name, reader.readFloat());
 				case StrProperty:
 				case StringProperty:
-					return new StringProperty(this, name, reader.readString(version));
+					return new StringProperty(this, name, reader.readString(version, size));
 				case NameProperty:
 					return new NameProperty(this, name, name.equals(Name.NONE) ? Name.NONE : names[reader.readIndex()]);
 				case ObjectProperty:

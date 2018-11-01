@@ -233,6 +233,10 @@ public class PackageReader implements Closeable {
 		return negative ? num * -1 : num;
 	}
 
+	public String readString(int packageVersion) {
+		return readString(packageVersion, -1);
+	}
+
 	/**
 	 * Read a string from the current buffer position.
 	 * <p>
@@ -242,7 +246,7 @@ public class PackageReader implements Closeable {
 	 * @param packageVersion package version
 	 * @return a string
 	 */
-	public String readString(int packageVersion) {
+	public String readString(int packageVersion, int size) {
 		String string = "";
 
 		if (packageVersion < 64) {
@@ -255,7 +259,7 @@ public class PackageReader implements Closeable {
 			}
 			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.US_ASCII);
 		} else {
-			int len = readByte() & 0xFF;
+			int len = size > -1 ? size : readByte() & 0xFF;
 			if (len > 0) {
 				byte[] val = new byte[len];
 				ensureRemaining(len);
