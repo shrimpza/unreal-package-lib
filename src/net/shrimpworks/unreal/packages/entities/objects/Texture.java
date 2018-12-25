@@ -12,9 +12,9 @@ import net.shrimpworks.unreal.packages.PackageReader;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.Named;
-import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT5Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT1Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT3Decompressor;
+import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT5Decompressor;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
@@ -164,7 +164,7 @@ public class Texture extends Object {
 					BufferedImage rgbImg = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
 					for (int i = 0; i < data.length; i += 4) {
 						byte[] dest = ((DataBufferByte)rgbImg.getRaster().getDataBuffer()).getData();
-						dest[i + 0] = data[i + 3];
+						dest[i + 0] = (byte)255; //data[i + 3]; // FIXME something's missing, fallback to no alpha :(
 						dest[i + 1] = data[i + 0];
 						dest[i + 2] = data[i + 1];
 						dest[i + 3] = data[i + 2];
