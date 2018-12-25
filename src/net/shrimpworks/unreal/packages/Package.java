@@ -281,7 +281,7 @@ public class Package implements Closeable {
 		for (ExportedObject object : objects) {
 			if (object == null) continue;
 
-			if (object.name.equals(name)) return object;
+			if (object.name.name.equalsIgnoreCase(name.name)) return object;
 		}
 
 		return null;
