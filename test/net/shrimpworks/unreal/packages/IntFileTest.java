@@ -46,7 +46,7 @@ public class IntFileTest {
 		IntFile.Section pub = intFile.section("Public");
 		assertTrue(pub.value("Preferences") instanceof IntFile.ListValue);
 		assertTrue(pub.asList("Preferences").values.get(0) instanceof IntFile.MapValue);
-		assertEquals("\"Advanced\"", ((IntFile.MapValue)pub.asList("Preferences").values.get(0)).value.get("Caption"));
+		assertEquals("Advanced", ((IntFile.MapValue)pub.asList("Preferences").values.get(0)).value.get("Caption"));
 
 		assertTrue(pub.keys().contains("Object"));
 

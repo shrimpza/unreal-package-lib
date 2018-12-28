@@ -56,10 +56,13 @@ public class Umod implements Closeable {
 
 		// read the files directory/table
 		List<UmodFile> files = new ArrayList<>();
-		reader.moveTo(filesOffset + 1); // hmm :)
+		reader.moveTo(filesOffset);
+
+		// read number of entries within the
+		int entries = reader.readIndex();
 
 		// keep reading until we get back to the header
-		while (reader.currentPosition() < reader.size() - 20) {
+		for (int i = 0; i < entries; i++) {
 			reader.ensureRemaining(270); // enough to read a full file path and the other bytes
 			files.add(readFile());
 		}
