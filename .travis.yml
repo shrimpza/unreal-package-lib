@@ -4,7 +4,8 @@ jdk:
   - openjdk8
 
 script:
-  - ant test publish
+  - ant test
+  - ant publish
 
 branches:
   only:
