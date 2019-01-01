@@ -26,6 +26,8 @@
 	<property name="checkstyle.report.style" location="etc/checkstyle-noframes.xsl"/>
 	<property name="checkstyle.report.html" location="${build.reports.dir}/checkstyle.html"/>
 
+	<property environment="env"/>
+
 	<path id="default.classpath">
 		<fileset dir="${lib.dir}" includes="default/*.jar"/>
 		<pathelement path="${build.src.dir}"/>
@@ -40,7 +42,15 @@
 		<fileset dir="${dist.dir}" includes="lib/*.jar"/>
 	</path>
 
-	<target name="init">
+	<!-- build information -->
+	<target name="module-version" description="setup module vision information">
+		<condition property="module.build" value="${module.version}.${env.TRAVIS_BUILD_NUMBER}" else="${module.version}">
+			<isset property="env.TRAVIS_BUILD_NUMBER"/>
+		</condition>
+		<echo message="Building version ${module.build}"/>
+	</target>
+
+	<target name="init" depends="module-version">
 		<mkdir dir="${build.src.dir}"/>
 		<mkdir dir="${build.test.dir}"/>
 	</target>
@@ -73,17 +83,30 @@
 
 	<!-- Ivy dependency resolution -->
 	<target name="ivy-resolve" depends="init-ivy" description="retrieve dependencies with ivy">
-		<ivy:retrieve pattern="${lib.dir}/[conf]/[artifact]-[revision].[ext]"/>
+		<ivy:settings file="ivysettings.xml" />
+		<ivy:retrieve pattern="${lib.dir}/[conf]/[artifact]-[revision].[ext]" />
 	</target>
 
-	<target name="publish-local" depends="dist" description="publish in the local ivy repository">
+	<target name="publish" depends="dist" description="publish in the local ivy repository">
+		<ivy:settings file="ivysettings.xml" />
 		<ivy:publish artifactspattern="${dist.dir}/[artifact].[ext]"
-					 resolver="local"
-					 pubrevision="${module.version}"
+					 resolver="shrimpworks"
+					 pubrevision="${module.build}"
 					 forcedeliver="true"
 					 overwrite="true"
 		/>
-		<echo message="project ${ant.project.name} published locally with version ${module.version}"/>
+		<echo message="project ${ant.project.name} published publicly with version ${module.build}"/>
+	</target>
+
+	<target name="publish-local" depends="dist" description="publish in the local ivy repository">
+		<ivy:settings file="ivysettings.xml" />
+		<ivy:publish artifactspattern="${dist.dir}/[artifact].[ext]"
+					 resolver="local"
+					 pubrevision="${module.build}"
+					 forcedeliver="true"
+					 overwrite="true"
+		/>
+		<echo message="project ${ant.project.name} published locally with version ${module.build}"/>
 	</target>
 
 	<!-- Simple source build -->
