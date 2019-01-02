@@ -43,6 +43,12 @@ public class UmodTest {
 	public void umod() throws IOException {
 		try (Umod umod = new Umod(tmpMod)) {
 
+			assertNotNull(umod.manifestIni);
+			assertNotNull(umod.manifestInt);
+			assertNotNull(umod.manifestInt.section("Setup"));
+			assertEquals("Monster Hunt v5.0", umod.manifestInt.section("Setup").value("LocalProduct").toString());
+			assertEquals("Monster Hunt v5.0", umod.manifestIni.section("Setup").value("Product").toString());
+
 			// lets find a random map in the package
 			boolean found = false;
 			for (Umod.UmodFile file : umod.files) {

@@ -102,6 +102,11 @@ public class IntFile {
 		return sections.stream().map(s -> s.name).collect(Collectors.toList());
 	}
 
+	@Override
+	public String toString() {
+		return String.format("IntFile [sections=%s]", sections);
+	}
+
 	/**
 	 * An <code>.int</code> file section.
 	 * <p>

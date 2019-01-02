@@ -477,23 +477,27 @@ public class Package implements Closeable {
 			}
 		}
 
+		int[] sizeMap = {1, 2, 4, 12, 16};
+
 		switch (size) {
 			case 0:
-				size = 1; break;
 			case 1:
-				size = 2; break;
 			case 2:
-				size = 4; break;
 			case 3:
-				size = 12; break;
 			case 4:
-				size = 16; break;
+				size = sizeMap[size];
+				break;
 			case 5:
-				size = reader.readByte() & 0xFF; break;
+				size = reader.readByte() & 0xFF;
+				break;
 			case 6:
-				size = reader.readShort(); break;
+				size = reader.readShort();
+				break;
 			case 7:
-				size = reader.readInt(); break;
+				size = reader.readInt();
+				break;
+			default:
+				throw new IllegalArgumentException(String.format("Unknown property field size %d", size));
 		}
 
 		// if array and not boolean, next byte is index of property within the array (??)
@@ -544,9 +548,6 @@ public class Package implements Closeable {
 						case PointRegion:
 							return new StructProperty.PointRegionProperty(this, name, new ObjectReference(this, reader.readIndex()),
 																		  reader.readInt(), reader.readByte());
-						case Vector:
-							return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
-																	 reader.readFloat());
 						case Scale:
 							return new StructProperty.ScaleProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
 																	reader.readFloat(), reader.readByte());
@@ -555,6 +556,7 @@ public class Package implements Closeable {
 						case Color:
 							return new StructProperty.ColorProperty(this, name, reader.readByte(), reader.readByte(), reader.readByte(),
 																	reader.readByte());
+						case Vector:
 						default:
 							// unknown struct, but perhaps we can assume it to be a vector at least
 							if (size == 12) return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
@@ -570,7 +572,7 @@ public class Package implements Closeable {
 				case FixedArrayProperty:
 					return new FixedArrayProperty(this, name, new ObjectReference(this, reader.readIndex()), reader.readIndex());
 				default:
-					throw new IllegalArgumentException("FIXME " + type);
+					throw new IllegalArgumentException("Cannot read unsupported property type " + type.name());
 			}
 		} finally {
 			// if we didn't read all the property's bytes somehow, fast-forward to the end of the property...

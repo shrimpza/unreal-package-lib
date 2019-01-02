@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * An Unreal modification package.
@@ -27,6 +28,7 @@ import java.util.List;
 public class Umod implements Closeable {
 
 	private static final int UMOD_SIGNATURE = 0x9FE3C5A3;
+	private static final UmodFile[] UMOD_ARRAY = new UmodFile[0];
 
 	private final PackageReader reader;
 
@@ -34,7 +36,8 @@ public class Umod implements Closeable {
 	public final int size;
 	public final UmodFile[] files;
 
-	// TODO probably expose the manifest as a collection of Properties
+	public final IntFile manifestIni;
+	public final IntFile manifestInt;
 
 	public Umod(Path umodFile) throws IOException {
 		this(new PackageReader(umodFile));
@@ -58,16 +61,39 @@ public class Umod implements Closeable {
 		List<UmodFile> files = new ArrayList<>();
 		reader.moveTo(filesOffset);
 
+		// keep track of manifest files
+		final UmodFile[] manifests = new UmodFile[2];
+
 		// read number of entries within the
 		int entries = reader.readIndex();
 
 		// keep reading until we get back to the header
 		for (int i = 0; i < entries; i++) {
 			reader.ensureRemaining(270); // enough to read a full file path and the other bytes
-			files.add(readFile());
+			UmodFile file = readFile();
+			files.add(file);
+
+			if (file.name.toLowerCase().endsWith("manifest.ini")) manifests[0] = file;
+			else if (file.name.toLowerCase().endsWith("manifest.int")) manifests[1] = file;
 		}
 
-		this.files = files.toArray(new UmodFile[0]);
+		this.files = files.toArray(UMOD_ARRAY);
+
+		this.manifestIni = Optional.of(manifests[0]).map(u -> {
+			try {
+				return new IntFile(u.read());
+			} catch (IOException e) {
+				return null;
+			}
+		}).orElse(null);
+
+		this.manifestInt = Optional.of(manifests[1]).map(u -> {
+			try {
+				return new IntFile(u.read());
+			} catch (IOException e) {
+				return null;
+			}
+		}).orElse(null);
 	}
 
 	@Override

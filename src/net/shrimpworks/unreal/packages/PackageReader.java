@@ -100,17 +100,15 @@ public class PackageReader implements Closeable {
 	 * @param amount amount to move forward by
 	 */
 	public void moveRelative(int amount) {
-		// FIXME move channel position rather than just moving the buffer repeatedly
-		int bypass = amount;
-		while (bypass > 0) {
-			if (!buffer.hasRemaining()) {
-				fillBuffer();
-			}
-			int chunk = Math.min(buffer.remaining(), bypass);
-			buffer.position(buffer.position() + chunk);
-			bypass -= chunk;
+		try {
+			channel.position(channel.position() + amount - buffer.remaining());
+
+			buffer.clear();
+			channel.read(buffer);
+			buffer.flip();
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not move by " + amount + " bytes within channel", e);
 		}
-		fillBuffer();
 	}
 
 	/**
