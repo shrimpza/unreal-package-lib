@@ -33,15 +33,43 @@ public class IntFile {
 	private final List<Section> sections;
 
 	public IntFile(Path intFile) throws IOException {
-		this(FileChannel.open(intFile, StandardOpenOption.READ));
+		this(FileChannel.open(intFile, StandardOpenOption.READ), false);
+	}
+
+	/**
+	 * Create a new IntFile from a file path.
+	 *
+	 * @param intFile       path to int file to read
+	 * @param syntheticRoot if true, will create a synthetic section named "root"
+	 *                      to hold items which don't have a section header
+	 * @throws IOException reading file failed
+	 */
+	public IntFile(Path intFile, boolean syntheticRoot) throws IOException {
+		this(FileChannel.open(intFile, StandardOpenOption.READ), syntheticRoot);
 	}
 
 	public IntFile(SeekableByteChannel channel) throws IOException {
+		this(channel, false);
+	}
+
+	/**
+	 * Create a new IntFile from a byte channel.
+	 *
+	 * @param channel       channel to read
+	 * @param syntheticRoot if true, will create a synthetic section named "root"
+	 *                      to hold items which don't have a section header
+	 * @throws IOException reading channel failed
+	 */
+	public IntFile(SeekableByteChannel channel, boolean syntheticRoot) throws IOException {
 		this.sections = new ArrayList<>();
 
 		try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
 			String r;
 			Section section = null;
+			if (syntheticRoot) {
+				section = new Section("root", new HashMap<>());
+				sections.add(section);
+			}
 			while ((r = reader.readLine()) != null) {
 				Matcher m = SECTION.matcher(r);
 				if (m.matches()) {

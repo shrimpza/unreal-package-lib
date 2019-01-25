@@ -1,0 +1,2 @@
+Mutator=(ClassName=MutPackage.MutatorClass,GroupName=MyMutator,IconMaterialName=MutatorArt.nosym,FriendlyName=MutPackage.MutatorClass.FriendlyName,Description=MutPackage.MutatorClass.Description,FallbackName="My Mutator",FallbackDesc="My Cool Mutator||It Does Stuff")
+Vehicle=(ClassName=MutPackage.CarClass,FriendlyName=MutPackage.CarClass.VehicleNameString,FallbackName="Cool Car",FallbackDesc="Cool Car Thing")
