@@ -231,6 +231,18 @@ public class IntFile {
 			this.value = value;
 		}
 
+		public String get(String key) {
+			return value.get(key);
+		}
+
+		public String getOrDefault(String key, String defaultValue) {
+			return value.getOrDefault(key, defaultValue);
+		}
+
+		public boolean containsKey(String key) {
+			return value.containsKey(key);
+		}
+
 		@Override
 		public String toString() {
 			return value.toString();

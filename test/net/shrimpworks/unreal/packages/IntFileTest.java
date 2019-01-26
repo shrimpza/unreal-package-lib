@@ -50,7 +50,7 @@ public class IntFileTest {
 		IntFile.Section pub = intFile.section("Public");
 		assertTrue(pub.value("Preferences") instanceof IntFile.ListValue);
 		assertTrue(pub.asList("Preferences").values.get(0) instanceof IntFile.MapValue);
-		assertEquals("Advanced", ((IntFile.MapValue)pub.asList("Preferences").values.get(0)).value.get("Caption"));
+		assertEquals("Advanced", ((IntFile.MapValue)pub.asList("Preferences").values.get(0)).get("Caption"));
 
 		assertTrue(pub.keys().contains("Object"));
 	}
@@ -63,6 +63,6 @@ public class IntFileTest {
 		assertFalse(uclFile.section("root").keys().isEmpty());
 
 		assertTrue(uclFile.section("root").value("Mutator") instanceof IntFile.MapValue);
-		assertEquals("My Mutator", ((IntFile.MapValue)uclFile.section("root").value("Mutator")).value.get("FallbackName"));
+		assertEquals("My Mutator", ((IntFile.MapValue)uclFile.section("root").value("Mutator")).get("FallbackName"));
 	}
 }
