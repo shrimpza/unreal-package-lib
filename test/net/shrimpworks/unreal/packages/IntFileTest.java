@@ -49,10 +49,14 @@ public class IntFileTest {
 
 		IntFile.Section pub = intFile.section("Public");
 		assertTrue(pub.value("Preferences") instanceof IntFile.ListValue);
-		assertTrue(pub.asList("Preferences").values.get(0) instanceof IntFile.MapValue);
-		assertEquals("Advanced", ((IntFile.MapValue)pub.asList("Preferences").values.get(0)).get("Caption"));
+		assertTrue(pub.asList("Preferences").get(0) instanceof IntFile.MapValue);
+		assertEquals("Advanced", ((IntFile.MapValue)pub.asList("Preferences").get(0)).get("Caption"));
 
 		assertTrue(pub.keys().contains("Object"));
+
+		assertTrue(pub.value("Quoted") instanceof IntFile.MapValue);
+		IntFile.MapValue quoted = (IntFile.MapValue)(pub.value("Quoted"));
+		assertEquals("Mutator,My Cool Mutator!", quoted.get("Description"));
 	}
 
 	@Test

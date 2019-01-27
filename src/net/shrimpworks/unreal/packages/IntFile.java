@@ -29,6 +29,7 @@ public class IntFile {
 	private static final Pattern KEY_VALUE = Pattern.compile("\\s*([^=]*)=(.*)");
 
 	private static final Pattern MAP_VALUE = Pattern.compile("\\s*\\(([^)]*)\\)");
+	private static final String MAP_VALUE_SPLIT = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
 	private final List<Section> sections;
 
@@ -86,7 +87,7 @@ public class IntFile {
 						m = MAP_VALUE.matcher(v);
 						if (m.matches()) {
 							Map<String, String> vals = new HashMap<>();
-							for (String s : m.group(1).trim().split(",")) {
+							for (String s : m.group(1).trim().split(MAP_VALUE_SPLIT, -1)) {
 								m = KEY_VALUE.matcher(s);
 								if (m.matches()) {
 									vals.put(m.group(1).trim(), m.group(2).trim().replaceAll("\"", ""));
@@ -215,6 +216,10 @@ public class IntFile {
 
 		public ListValue(List<Value> values) {
 			this.values = values;
+		}
+
+		public Value get(int index) {
+			return values.get(index);
 		}
 
 		@Override
