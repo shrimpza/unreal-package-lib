@@ -62,7 +62,7 @@
 	</condition>
 	<property name="ivy.home" value="${user.home}/.ant"/>
 	<property name="ivy.jar.dir" value="${ivy.home}/lib"/>
-	<property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar"/>
+	<property name="ivy.jar.file" value="${ivy.jar.dir}/ivy-${ivy.install.version}.jar"/>
 	<property name="ivy.lib.dir" value="${lib.dir}"/>
 
 	<!-- Ivy download -->

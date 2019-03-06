@@ -1,5 +1,5 @@
-module unreal.packages.lib {
-	requires java.desktop;
+module net.shrimpworks.unreal.packages {
+	requires java.desktop; // required for image processing for texture exports
 
 	exports net.shrimpworks.unreal.packages;
 	exports net.shrimpworks.unreal.packages.entities;
