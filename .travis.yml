@@ -8,6 +8,9 @@ cache:
   directories:
     - /home/travis/.ant/
 
+before_install:
+  - ./resources/install-ant.sh
+
 jobs:
   include:
     - stage: test
