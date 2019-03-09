@@ -14,7 +14,7 @@ before_install:
 jobs:
   include:
     - stage: test
-      script: ant test
+      script: ~/.ant/ant/bin/ant test
     - stage: publish artefacts
       if: branch = master
-      script: ant publish
+      script: ~/.ant/ant/bin/ant publish
