@@ -2,6 +2,7 @@ package net.shrimpworks.unreal.packages;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -255,14 +256,14 @@ public class PackageReader implements Closeable {
 				val[len] = v;
 				len++;
 			}
-			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.US_ASCII);
+			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.ISO_8859_1);
 		} else {
 			int len = size > -1 ? size : readByte() & 0xFF;
 			if (len > 0) {
 				byte[] val = new byte[len];
 				ensureRemaining(len);
 				buffer.get(val);
-				string = new String(val, StandardCharsets.US_ASCII);
+				string = new String(val, StandardCharsets.ISO_8859_1);
 			}
 		}
 
