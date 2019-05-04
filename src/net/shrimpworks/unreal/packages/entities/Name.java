@@ -17,6 +17,10 @@ public class Name {
 		this.flags = flags;
 	}
 
+	public Name(String name) {
+		this(name, 0);
+	}
+
 	public EnumSet<ObjectFlag> flags() {
 		return ObjectFlag.fromFlags(flags);
 	}

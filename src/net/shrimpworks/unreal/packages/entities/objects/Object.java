@@ -63,6 +63,7 @@ public class Object {
 
 	@Override
 	public String toString() {
-		return String.format("UnrealObject [export=%s, header=%s, properties=%s]", export, header, properties);
+		return String.format("%s [class=%s, export=%s, header=%s, properties=%s]",
+							 getClass().getSimpleName(), className(), export, header, properties);
 	}
 }

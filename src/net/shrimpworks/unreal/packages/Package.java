@@ -556,11 +556,16 @@ public class Package implements Closeable {
 						case Color:
 							return new StructProperty.ColorProperty(this, name, reader.readByte(), reader.readByte(), reader.readByte(),
 																	reader.readByte());
+						case Sphere:
+							return new StructProperty.SphereProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
+																	 reader.readFloat());
 						case Vector:
 						default:
 							// unknown struct, but perhaps we can assume it to be a vector at least
-							if (size == 12) return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
-																					 reader.readFloat());
+							if (size == 12) {
+								return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
+																		 reader.readFloat());
+							}
 							return new StructProperty.UnknownStructProperty(this, name);
 					}
 				case RotatorProperty:
