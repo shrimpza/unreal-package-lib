@@ -7,67 +7,22 @@ import java.util.List;
 import net.shrimpworks.unreal.packages.Package;
 import net.shrimpworks.unreal.packages.PackageReader;
 import net.shrimpworks.unreal.packages.entities.Export;
-import net.shrimpworks.unreal.packages.entities.Name;
-import net.shrimpworks.unreal.packages.entities.ObjectReference;
+import net.shrimpworks.unreal.packages.entities.objects.geometry.Polygon;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 
+/**
+ * A collection of polygon information contained in objects of class Polys.
+ *
+ * Data format:
+ * <pre>
+ *   - [int] polygon count
+ *   - [int] polygon count (again...?)
+ *   - [[Polygon, ...]] polygons, repeated for polygon count
+ * </pre>
+ */
 public class Polys extends Object {
 
 	public final List<Polygon> polys;
-
-	public static class Polygon {
-
-		public final Model.Vector base;
-		public final Model.Vector normal;
-		public final Model.Vector textureU;
-		public final Model.Vector textureV;
-		public final List<Model.Vector> vertices;
-
-		public final int polyFlags;
-		public final ObjectReference actor;
-		public final ObjectReference texture;
-		public final Name itemName;
-		public final int link;
-		public final int brushPoly;
-
-		public final short panU;
-		public final short panV;
-
-		public Polygon(Package pkg, PackageReader reader) {
-			int vertCount = reader.readIndex();
-
-			reader.ensureRemaining(4 * 12);
-			this.base = new Model.Vector(reader.readFloat(), reader.readFloat(), reader.readFloat());
-			this.normal = new Model.Vector(reader.readFloat(), reader.readFloat(), reader.readFloat());
-			this.textureU = new Model.Vector(reader.readFloat(), reader.readFloat(), reader.readFloat());
-			this.textureV = new Model.Vector(reader.readFloat(), reader.readFloat(), reader.readFloat());
-
-			this.vertices = new ArrayList<>(vertCount);
-			for (int i = 0; i < vertCount; i++) {
-				reader.ensureRemaining(12);
-				vertices.add(new Model.Vector(reader.readFloat(), reader.readFloat(), reader.readFloat()));
-			}
-
-			reader.ensureRemaining(20);
-			this.polyFlags = reader.readInt();
-			this.actor = new ObjectReference(pkg, reader.readIndex());
-			this.texture = new ObjectReference(pkg, reader.readIndex());
-			this.itemName = pkg.names[reader.readIndex()];
-			this.link = reader.readIndex();
-			this.brushPoly = reader.readIndex();
-
-			this.panU = reader.readShort();
-			this.panV = reader.readShort();
-		}
-
-		@Override
-		public String toString() {
-			return String.format("Polygon [base=%s, normal=%s, textureU=%s, textureV=%s, vertices=%s, polyFlags=%s, actor=%s, " +
-								 "texture=%s, itemName=%s, link=%s, brushPoly=%s, panU=%s, panV=%s]",
-								 base, normal, textureU, textureV, vertices, polyFlags, actor,
-								 texture, itemName, link, brushPoly, panU, panV);
-		}
-	}
 
 	public Polys(Package pkg, PackageReader reader, Export export, ObjectHeader header, Collection<Property> properties, int dataStart) {
 		super(pkg, reader, export, header, properties, dataStart);
