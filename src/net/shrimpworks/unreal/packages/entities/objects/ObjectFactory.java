@@ -21,7 +21,8 @@ public enum ObjectFactory {
 
 	Texture(Texture.class),
 	Palette(Palette.class),
-	Model(Model.class);
+	Model(Model.class),
+	Polys(Polys.class);
 
 	private final Class<? extends Object> clazz;
 

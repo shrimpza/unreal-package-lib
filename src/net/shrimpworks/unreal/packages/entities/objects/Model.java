@@ -42,7 +42,7 @@ public class Model extends Object {
 		public final float y;
 		public final float z;
 
-		private Vector(float x, float y, float z) {
+		public Vector(float x, float y, float z) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
@@ -61,7 +61,7 @@ public class Model extends Object {
 		public final float z;
 		public final float radius;
 
-		private Sphere(float x, float y, float z, float radius) {
+		public Sphere(float x, float y, float z, float radius) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
@@ -305,9 +305,9 @@ public class Model extends Object {
 		}
 
 		int lightbitCount = reader.readIndex();
-		reader.ensureRemaining(lightbitCount);
 		this.lightBits = new ArrayList<>(lightbitCount);
 		for (int i = 0; i < lightbitCount; i++) {
+			reader.ensureRemaining(1);
 			lightBits.add(reader.readByte());
 		}
 
@@ -329,7 +329,7 @@ public class Model extends Object {
 			leafHulls.add(reader.readInt());
 		}
 
-		int leavesCount = reader.readIndex(); // FIXME find example with leaves - will fail from here if > 0
+		int leavesCount = reader.readIndex(); // FIXME find example with leaves (??!) - will fail from here if > 0
 
 		int lightsCount = reader.readIndex();
 		this.lights = new ArrayList<>(lightsCount);
