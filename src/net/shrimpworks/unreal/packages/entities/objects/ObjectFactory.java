@@ -56,7 +56,6 @@ public enum ObjectFactory {
 			return constructor.newInstance(pkg, reader, export, header, properties, dataStart);
 		} catch (IllegalArgumentException | NoSuchMethodException
 				| IllegalAccessException | InstantiationException | InvocationTargetException e) {
-			e.printStackTrace();
 			return new Object(pkg, reader, export, header, properties, dataStart);
 		}
 	}

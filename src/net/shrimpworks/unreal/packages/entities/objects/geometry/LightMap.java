@@ -1,5 +1,6 @@
 package net.shrimpworks.unreal.packages.entities.objects.geometry;
 
+import net.shrimpworks.unreal.packages.Package;
 import net.shrimpworks.unreal.packages.PackageReader;
 
 /**
@@ -36,10 +37,11 @@ public class LightMap {
 		this.lightActors = lightActors;
 	}
 
-	public LightMap(PackageReader reader) {
+	public LightMap(Package pkg, PackageReader reader) {
 		this(reader.readInt(),
 			 new Vector(reader),
-			 reader.readIndex(), reader.readIndex(), reader.readFloat(), reader.readFloat(),
+			 pkg.version < 117 ? reader.readIndex() : 0, pkg.version < 117 ? reader.readIndex() : 0,
+			 reader.readFloat(), reader.readFloat(),
 			 reader.readInt());
 	}
 

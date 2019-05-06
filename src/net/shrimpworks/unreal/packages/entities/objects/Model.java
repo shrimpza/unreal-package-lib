@@ -9,12 +9,15 @@ import net.shrimpworks.unreal.packages.PackageReader;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ObjectReference;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Bound;
+import net.shrimpworks.unreal.packages.entities.objects.geometry.Leaf;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.LightMap;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Node;
+import net.shrimpworks.unreal.packages.entities.objects.geometry.Plane;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Sphere;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Surface;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Vector;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Vert;
+import net.shrimpworks.unreal.packages.entities.objects.geometry.Zone;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 
 /**
@@ -35,7 +38,8 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
  *   - [compact int] vert count
  *   - [[Vert, ...]] verts
  *   - [int] number of shared sides
- *   - [int] number of zones
+ *   - [int] zone count
+ *   - [[Zone, ...]] zones
  *   - [compact int] (object reference] ref to Polys object
  *   - [compact int] lightmap count
  *   - [[LightMap, ...]] lightmaps
@@ -45,7 +49,8 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
  *   - [[Bound, ...]] bounds
  *   - [compact int] leaf hulls count (what's a leaf hull?!)
  *   - [[Int, ...]] leaf hulls
- *   - [compact int] leaves count (have not seen non-zero yet)
+ *   - [compact int] leaves count
+ *   - [[Leaf, ...]] leaves
  *   - [compact int] lights count
  *   - [[compact int, ...]] (object references) refs to Light objects
  *   - [int] root outside (??)
@@ -64,7 +69,8 @@ public class Model extends Object {
 	public final List<Vert> verts;
 
 	public final int numSharedSides;
-	public final int numZones;
+
+	public final List<Zone> zones;
 
 	public final ObjectReference polys;
 
@@ -72,6 +78,7 @@ public class Model extends Object {
 	public final List<Byte> lightBits;
 	public final List<Bound> bounds;
 	public final List<Integer> leafHulls;
+	public final List<Leaf> leaves;
 	public final List<ObjectReference> lights;
 
 	public final int rootOutside;
@@ -89,40 +96,75 @@ public class Model extends Object {
 		int vectorCount = reader.readIndex();
 		this.vectors = new ArrayList<>(vectorCount);
 		for (int i = 0; i < vectorCount; i++) {
-			reader.ensureRemaining(12);
+			reader.ensureRemaining(16);
 			vectors.add(new Vector(reader));
 		}
 
 		int pointCount = reader.readIndex();
 		this.points = new ArrayList<>(pointCount);
 		for (int i = 0; i < pointCount; i++) {
-			reader.ensureRemaining(12);
+			reader.ensureRemaining(16);
 			points.add(new Vector(reader));
 		}
 
 		int nodeCount = reader.readIndex();
 		this.nodes = new ArrayList<>(nodeCount);
 		for (int i = 0; i < nodeCount; i++) {
-			reader.ensureRemaining(50);
-			nodes.add(new Node(reader));
+			reader.ensureRemaining(64);
+			if (pkg.version < 117) nodes.add(new Node(reader));
+			else {
+				// FIXME unknown data structures for UE2
+//				new Plane(reader);
+//				reader.readLong();
+//				reader.readInt(); reader.readInt();
+//				reader.readFloat();reader.readFloat(); reader.readFloat();reader.readFloat();
+//				reader.readInt(); reader.readInt();	reader.readInt(); reader.readInt();
+//				reader.readShort();
+//				reader.readByte();
+//				reader.readLong(); reader.readLong();
+//				reader.readInt();
+			}
 		}
 
 		int surfCount = reader.readIndex();
 		this.surfaces = new ArrayList<>(surfCount);
 		for (int i = 0; i < surfCount; i++) {
-			reader.ensureRemaining(24);
-			surfaces.add(new Surface(pkg, reader));
+			reader.ensureRemaining(32);
+			if (pkg.version < 117) surfaces.add(new Surface(pkg, reader));
+			else {
+				// FIXME unknown data structures for UE2
+//				reader.readIndex();
+//				reader.readInt();
+//				reader.readIndex();reader.readIndex();reader.readIndex();reader.readIndex();reader.readIndex();
+//				reader.readIndex();
+//				reader.readFloat();reader.readFloat();reader.readFloat();reader.readFloat();reader.readFloat();
+//				Texture INDEX
+//				PolyFlags DWORD
+//				5x INDEX (pBase, vNormal, vTextureU, vTextureV, iLightMap ?)
+//				iBrushPoly INDEX
+//				5x FLOAT
+			}
 		}
 
 		int vertCount = reader.readIndex();
 		this.verts = new ArrayList<>(vertCount);
 		for (int i = 0; i < vertCount; i++) {
-			reader.ensureRemaining(4);
+			reader.ensureRemaining(8);
 			verts.add(new Vert(reader));
 		}
 
 		this.numSharedSides = reader.readInt();
-		this.numZones = reader.readInt(); // FIXME is there supposed to be data before polys?
+
+		int zoneCount = reader.readInt();
+		this.zones = new ArrayList<>(zoneCount);
+		for (int i = 0; i < zoneCount; i++) {
+			reader.ensureRemaining(32);
+			zones.add(new Zone(pkg, reader));
+
+			// extraneous data
+			if (pkg.version < 63) reader.readFloat(); // last render time (?)
+			if (pkg.version >= 117) reader.readInt(); // unknown
+		}
 
 		this.polys = new ObjectReference(pkg, reader.readIndex());
 
@@ -130,7 +172,7 @@ public class Model extends Object {
 		this.lightMaps = new ArrayList<>(lightMapCount);
 		for (int i = 0; i < lightMapCount; i++) {
 			reader.ensureRemaining(32);
-			lightMaps.add(new LightMap(reader));
+			lightMaps.add(new LightMap(pkg, reader));
 		}
 
 		int lightBitCount = reader.readIndex();
@@ -154,7 +196,12 @@ public class Model extends Object {
 			leafHulls.add(reader.readInt());
 		}
 
-		int leavesCount = reader.readIndex(); // FIXME find example with leaves (??!) - will fail from here if > 0
+		int leavesCount = reader.readIndex();
+		this.leaves = new ArrayList<>(leavesCount);
+		for (int i = 0; i < leavesCount; i++) {
+			reader.ensureRemaining(32);
+			leaves.add(new Leaf(pkg, reader));
+		}
 
 		int lightsCount = reader.readIndex();
 		this.lights = new ArrayList<>(lightsCount);
