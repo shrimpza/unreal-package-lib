@@ -30,9 +30,8 @@ public class Polys extends Object {
 		reader.moveTo(dataStart);
 		reader.ensureRemaining(32);
 
-		int polyCount = reader.readInt();
-
-		assert polyCount == reader.readInt(); // it appears as though there are two polycount values at the head of the file
+		int maybePolyCount = reader.readInt();
+		int polyCount = reader.readInt(); // it appears as though there are two polycount values at the head of the collection
 
 		this.polys = new ArrayList<>(polyCount);
 		for (int i = 0; i < polyCount; i++) {
