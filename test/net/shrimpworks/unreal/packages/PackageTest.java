@@ -10,7 +10,9 @@ import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
+import net.shrimpworks.unreal.packages.entities.objects.Model;
 import net.shrimpworks.unreal.packages.entities.objects.Object;
+import net.shrimpworks.unreal.packages.entities.objects.Polys;
 import net.shrimpworks.unreal.packages.entities.objects.Texture;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
@@ -42,6 +44,19 @@ public class PackageTest {
 	@After
 	public void teardown() throws IOException {
 		Files.deleteIfExists(tmpMap);
+	}
+
+	@Test
+	public void readGeometryTypes() throws IOException {
+		try (Package pkg = new Package(tmpMap)) {
+			pkg.objectsByClassName("Model").forEach(o -> {
+				assertTrue(o.object() instanceof Model);
+			});
+
+			pkg.objectsByClassName("Polys").forEach(o -> {
+				assertTrue(o.object() instanceof Polys);
+			});
+		}
 	}
 
 	@Test

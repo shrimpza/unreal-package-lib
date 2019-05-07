@@ -20,7 +20,9 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
 public enum ObjectFactory {
 
 	Texture(Texture.class),
-	Palette(Palette.class);
+	Palette(Palette.class),
+	Model(Model.class),
+	Polys(Polys.class);
 
 	private final Class<? extends Object> clazz;
 

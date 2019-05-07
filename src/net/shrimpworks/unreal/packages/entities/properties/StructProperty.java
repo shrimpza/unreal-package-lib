@@ -135,14 +135,18 @@ public abstract class StructProperty extends Property {
 
 		@Override
 		public String toString() {
-			return String.format("ShapeProperty [name=%s, x=%s, y=%s, z=%s, w=%s]", name, x, y, z, w);
+			return String.format("%s [name=%s, x=%s, y=%s, z=%s, w=%s]", getClass().getSimpleName(), name, x, y, z, w);
 		}
 	}
 
 	public static class SphereProperty extends ShapeProperty {
 
-		public SphereProperty(Package pkg, Name name, float x, float y, float z, float w) {
-			super(pkg, name, x, y, z, w);
+		public SphereProperty(Package pkg, Name name, float x, float y, float z, float redius) {
+			super(pkg, name, x, y, z, redius);
+		}
+
+		public float radius() {
+			return w;
 		}
 	}
 

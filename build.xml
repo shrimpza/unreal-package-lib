@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="unreal-package-lib" default="dist" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
 
-	<property name="module.version" value="1.1"/>
+	<property name="module.version" value="1.2"/>
 
 	<!-- JDK source and target versions -->
 	<property name="src.version" value="11"/>
