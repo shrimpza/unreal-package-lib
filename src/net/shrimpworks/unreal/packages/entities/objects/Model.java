@@ -12,7 +12,6 @@ import net.shrimpworks.unreal.packages.entities.objects.geometry.Bound;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Leaf;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.LightMap;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Node;
-import net.shrimpworks.unreal.packages.entities.objects.geometry.Plane;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Sphere;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Surface;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Vector;
@@ -112,8 +111,8 @@ public class Model extends Object {
 		for (int i = 0; i < nodeCount; i++) {
 			reader.ensureRemaining(64);
 			if (pkg.version < 117) nodes.add(new Node(reader));
-			else {
-				// FIXME unknown data structures for UE2
+//			else {
+				// XXX unknown data structures for UE2
 //				new Plane(reader);
 //				reader.readLong();
 //				reader.readInt(); reader.readInt();
@@ -123,7 +122,7 @@ public class Model extends Object {
 //				reader.readByte();
 //				reader.readLong(); reader.readLong();
 //				reader.readInt();
-			}
+//			}
 		}
 
 		int surfCount = reader.readIndex();
@@ -131,8 +130,8 @@ public class Model extends Object {
 		for (int i = 0; i < surfCount; i++) {
 			reader.ensureRemaining(32);
 			if (pkg.version < 117) surfaces.add(new Surface(pkg, reader));
-			else {
-				// FIXME unknown data structures for UE2
+//			else {
+				// XXX unknown data structures for UE2
 //				reader.readIndex();
 //				reader.readInt();
 //				reader.readIndex();reader.readIndex();reader.readIndex();reader.readIndex();reader.readIndex();
@@ -143,7 +142,7 @@ public class Model extends Object {
 //				5x INDEX (pBase, vNormal, vTextureU, vTextureV, iLightMap ?)
 //				iBrushPoly INDEX
 //				5x FLOAT
-			}
+//			}
 		}
 
 		int vertCount = reader.readIndex();
