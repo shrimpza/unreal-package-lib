@@ -7,62 +7,43 @@
 package net.shrimpworks.unreal.packages.entities.objects.dxt;
 
 import java.awt.image.BufferedImage;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 public class DXT3Decompressor {
 
-	private static final int DXT3_BLOCK_SIZE = 4;
+	private static final int BLOCK_SIZE = 4;
 
 	public static BufferedImage decompress(byte[] data, int width, int height) {
 
-		if (width < DXT3_BLOCK_SIZE || height < DXT3_BLOCK_SIZE) {
-			throw new IllegalArgumentException("Invalid image size");
-		}
-
-		ByteBuffer buffer = ByteBuffer.wrap(data);
-		if (buffer.order() != ByteOrder.LITTLE_ENDIAN) {
-			buffer.order(ByteOrder.LITTLE_ENDIAN);
-		}
-
-		int numTilesWide = width / DXT3_BLOCK_SIZE;
-		int numTilesHigh = height / DXT3_BLOCK_SIZE;
-
 		// 8 bit per color ARGB packed in to an integer as a8r8g8b8
-		int[] pixels = new int[DXT3_BLOCK_SIZE * width];
+		final DXTParams params = new DXTParams(data, width, height, BufferedImage.TYPE_INT_ARGB_PRE, BLOCK_SIZE);
 
-		BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
-
-		for (int row = 0; row < numTilesHigh; row++) {
-			for (int col = 0; col < numTilesWide; col++) {
-				long alphaData = buffer.getLong();
-				short minColor = buffer.getShort();
-				short maxColor = buffer.getShort();
-				int colorIndexMask = buffer.getInt();
+		for (int row = 0; row < params.numTilesHigh; row++) {
+			for (int col = 0; col < params.numTilesWide; col++) {
+				long alphaData = params.buffer.getLong();
+				short minColor = params.buffer.getShort();
+				short maxColor = params.buffer.getShort();
+				int colorIndexMask = params.buffer.getInt();
 
 				Color24[] lookupTable = Color24.expandLookupTable(minColor, maxColor);
 
-				for (int k = DXT3_BLOCK_SIZE * DXT3_BLOCK_SIZE - 1; k >= 0; k--) {
+				for (int k = BLOCK_SIZE * BLOCK_SIZE - 1; k >= 0; k--) {
 					int alpha = (int)(alphaData >>> (k * 4)) & 0xF; // Alphas are just 4 bits per pixel
 					alpha <<= 4;
 
 					int colorIndex = (colorIndexMask >>> k * 2) & 0x03;
 
-					// No need to multiply alpha, it is already pre-multiplied
-//                  Color24 color = Color24.multiplyAlpha(lookupTable[colorIndex], alpha );
-
 					Color24 color = lookupTable[colorIndex];
 					int pixel8888 = (alpha << 24) | color.getPixel888();
 
-					int h = k / DXT3_BLOCK_SIZE, w = k % DXT3_BLOCK_SIZE;
-					int pixelIndex = h * width + (col * DXT3_BLOCK_SIZE + w);
+					int h = k / BLOCK_SIZE, w = k % BLOCK_SIZE;
+					int pixelIndex = h * width + (col * BLOCK_SIZE + w);
 
-					pixels[pixelIndex] = pixel8888;
+					params.pixels[pixelIndex] = pixel8888;
 				}
 			}
 
-			result.setRGB(0, row * DXT3_BLOCK_SIZE, width, DXT3_BLOCK_SIZE, pixels, 0, width);
+			params.image.setRGB(0, row * BLOCK_SIZE, width, BLOCK_SIZE, params.pixels, 0, width);
 		}
-		return result;
+		return params.image;
 	}
 }

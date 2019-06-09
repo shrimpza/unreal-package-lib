@@ -23,9 +23,7 @@ public class UmodTest {
 
 	@BeforeEach
 	public void setup() throws IOException {
-
 		// unpack a test mod to a temporary location
-		// TODO we could actually try to get a SeekableByteChannel out of something, rather
 		tmpMod = Files.createTempFile("test-mod-", ".umod");
 		try (InputStream is = getClass().getResourceAsStream("MonsterHunt.umod.gz");
 			 GZIPInputStream gis = new GZIPInputStream(is)) {
@@ -40,7 +38,7 @@ public class UmodTest {
 	}
 
 	@Test
-	public void umod() throws IOException {
+	public void readUmodFile() throws IOException {
 		try (Umod umod = new Umod(tmpMod)) {
 
 			assertNotNull(umod.manifestIni);

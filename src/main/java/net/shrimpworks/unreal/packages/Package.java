@@ -64,10 +64,11 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
 public class Package implements Closeable {
 
 	private static final int PKG_SIGNATURE = 0x9E2A83C1;
-
 	private static final int MAX_PROPERTIES = 256;
 
 	private static final String SHA1 = "SHA-1";
+
+	private static final int[] PROPERTY_SIZE_MAP = { 1, 2, 4, 12, 16 };
 
 	public enum PackageFlag {
 		AllowDownload(0x0001),    //	Allow downloading package
@@ -477,15 +478,13 @@ public class Package implements Closeable {
 			}
 		}
 
-		int[] sizeMap = { 1, 2, 4, 12, 16 };
-
 		switch (size) {
 			case 0:
 			case 1:
 			case 2:
 			case 3:
 			case 4:
-				size = sizeMap[size];
+				size = PROPERTY_SIZE_MAP[size];
 				break;
 			case 5:
 				size = reader.readByte() & 0xFF;

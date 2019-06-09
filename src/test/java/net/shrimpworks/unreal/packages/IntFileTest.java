@@ -36,7 +36,7 @@ public class IntFileTest {
 	}
 
 	@Test
-	public void parseInt() throws IOException {
+	public void parseIntFile() throws IOException {
 		IntFile intFile = new IntFile(tmpInt);
 
 		assertTrue(intFile.sections().contains("Language"));
@@ -60,7 +60,7 @@ public class IntFileTest {
 	}
 
 	@Test
-	public void parseUcl() throws IOException {
+	public void parseUclFile() throws IOException {
 		IntFile uclFile = new IntFile(tmpUcl, true);
 
 		assertFalse(uclFile.sections().isEmpty());

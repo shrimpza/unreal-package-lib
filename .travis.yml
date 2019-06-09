@@ -4,11 +4,6 @@ language: java
 jdk:
   - openjdk11
 
-addons:
-  sonarcloud:
-    organization: $SONAR_ORG_KEY
-    projectKey: $SONAR_PROJECT_KEY
-
 before_cache:
   - rm -f  ~/.gradle/caches/modules-2/modules-2.lock
   - rm -fr ~/.gradle/caches/*/plugin-resolution/
@@ -24,5 +19,3 @@ jobs:
     - stage: publish artefacts
       if: branch = master
       script: ./gradlew publish
-    - stage: analisys
-      script: sonar-scanner
