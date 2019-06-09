@@ -18,21 +18,19 @@ import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class PackageTest {
 
 	private Path tmpMap;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
-
 		// unpack our test map to a temporary location
-		// TODO we could actually try to get a SeekableByteChannel out of something, rather
 		tmpMap = Files.createTempFile("test-map-", ".unr");
 		try (InputStream is = getClass().getResourceAsStream("SCR-CityStreet.unr.gz");
 			 GZIPInputStream gis = new GZIPInputStream(is)) {
@@ -41,7 +39,7 @@ public class PackageTest {
 		}
 	}
 
-	@After
+	@AfterEach
 	public void teardown() throws IOException {
 		Files.deleteIfExists(tmpMap);
 	}

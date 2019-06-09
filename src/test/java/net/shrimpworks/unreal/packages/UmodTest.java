@@ -11,17 +11,17 @@ import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.objects.Object;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class UmodTest {
 
 	private Path tmpMod;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 
 		// unpack a test mod to a temporary location
@@ -34,7 +34,7 @@ public class UmodTest {
 		}
 	}
 
-	@After
+	@AfterEach
 	public void teardown() throws IOException {
 		Files.deleteIfExists(tmpMod);
 	}

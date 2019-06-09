@@ -6,18 +6,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class IntFileTest {
 
 	private Path tmpInt;
 	private Path tmpUcl;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		tmpInt = Files.createTempFile("test-int-", ".int");
 		try (InputStream is = getClass().getResourceAsStream("IntFile.int")) {
@@ -29,7 +29,7 @@ public class IntFileTest {
 		}
 	}
 
-	@After
+	@AfterEach
 	public void teardown() throws IOException {
 		Files.deleteIfExists(tmpInt);
 		Files.deleteIfExists(tmpUcl);
