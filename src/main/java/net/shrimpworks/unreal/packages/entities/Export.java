@@ -1,6 +1,6 @@
 package net.shrimpworks.unreal.packages.entities;
 
-import java.util.EnumSet;
+import java.util.Set;
 
 import net.shrimpworks.unreal.packages.Package;
 
@@ -42,7 +42,7 @@ public abstract class Export implements Named {
 		return name;
 	}
 
-	public EnumSet<ObjectFlag> flags() {
+	public Set<ObjectFlag> flags() {
 		return ObjectFlag.fromFlags(flags);
 	}
 

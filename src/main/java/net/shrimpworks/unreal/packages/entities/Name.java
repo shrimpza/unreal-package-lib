@@ -1,6 +1,6 @@
 package net.shrimpworks.unreal.packages.entities;
 
-import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Represents a name from a package's names table.
@@ -21,7 +21,7 @@ public class Name {
 		this(name, 0);
 	}
 
-	public EnumSet<ObjectFlag> flags() {
+	public Set<ObjectFlag> flags() {
 		return ObjectFlag.fromFlags(flags);
 	}
 

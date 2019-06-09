@@ -11,15 +11,15 @@ class Color24 {
 	/**
 	 * The red color component.
 	 */
-	public int r;
+	private int r;
 	/**
 	 * The green color component.
 	 */
-	public int g;
+	private int g;
 	/**
 	 * The blue color component.
 	 */
-	public int b;
+	private int b;
 
 	/**
 	 * Creates a 24 bit 888 RGB color with all values set to 0.

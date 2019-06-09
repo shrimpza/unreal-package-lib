@@ -172,8 +172,8 @@ public class Umod implements Closeable {
 
 		private final PackageReader reader;
 
-		private final int offset;
-		private final int size;
+		private final long offset;
+		private final long size;
 
 		private UmodFileChannel(PackageReader reader, int offset, int size) {
 			this.reader = reader;

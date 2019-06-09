@@ -2,6 +2,7 @@ package net.shrimpworks.unreal.packages.entities;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum ObjectFlag {
@@ -45,8 +46,8 @@ public enum ObjectFlag {
 		this.flag = flag;
 	}
 
-	public static EnumSet<ObjectFlag> fromFlags(int flags) {
-		EnumSet<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
+	public static Set<ObjectFlag> fromFlags(int flags) {
+		Set<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
 		objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
 		return objectFlags;
 	}

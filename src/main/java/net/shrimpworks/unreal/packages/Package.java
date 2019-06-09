@@ -83,8 +83,8 @@ public class Package implements Closeable {
 			this.flag = flag;
 		}
 
-		public static EnumSet<PackageFlag> fromFlags(int flags) {
-			EnumSet<PackageFlag> objectFlags = EnumSet.noneOf(PackageFlag.class);
+		public static Set<PackageFlag> fromFlags(int flags) {
+			Set<PackageFlag> objectFlags = EnumSet.noneOf(PackageFlag.class);
 			objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
 			return objectFlags;
 		}
@@ -164,16 +164,16 @@ public class Package implements Closeable {
 
 		if (version < 68) {
 			// unused, we don't care about the heritage values or the heritage table
-			int heritageCount = reader.readInt();
-			int heritagePos = reader.readInt();
+			reader.readInt(); // consume heritageCount
+			reader.readInt(); // consume heritagePos
 		} else {
 			// unused, we don't care about the guid, or generation counters or the generation information
 			byte[] guid = new byte[16];
 			reader.readBytes(guid, 0, 16);
 			int generationCount = reader.readInt();
 			for (int i = 0; i < generationCount; i++) {
-				int genExpCount = reader.readInt();
-				int genNameCount = reader.readInt();
+				reader.readInt(); // consume genExpCount
+				reader.readInt(); // consume genNameCount
 			}
 		}
 
@@ -215,7 +215,7 @@ public class Package implements Closeable {
 	 *
 	 * @return flag set
 	 */
-	public EnumSet<PackageFlag> flags() {
+	public Set<PackageFlag> flags() {
 		return PackageFlag.fromFlags(flags);
 	}
 
@@ -477,7 +477,7 @@ public class Package implements Closeable {
 			}
 		}
 
-		int[] sizeMap = {1, 2, 4, 12, 16};
+		int[] sizeMap = { 1, 2, 4, 12, 16 };
 
 		switch (size) {
 			case 0:

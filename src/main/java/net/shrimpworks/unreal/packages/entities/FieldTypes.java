@@ -4,9 +4,6 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import net.shrimpworks.unreal.packages.entities.Named;
-import net.shrimpworks.unreal.packages.entities.ObjectReference;
-
 public enum FieldTypes {
 	Const,
 	Enum,

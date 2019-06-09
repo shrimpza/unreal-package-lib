@@ -98,7 +98,7 @@ public class Texture extends Object {
 	}
 
 	private byte[] readImage(MipMap mip) {
-		reader.moveTo(mip.widthOffset - mip.size);
+		reader.moveTo((long)(mip.widthOffset - mip.size));
 		byte[] data = new byte[mip.size];
 		int pos = 0;
 
