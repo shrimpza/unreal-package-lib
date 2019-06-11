@@ -121,12 +121,22 @@ combination with the Package reader, refer to the unit tests.
 
 ## Building
 
-Building the project requires Ant. From the project root directory, execute:
+Building the project requires Gradle. From the project root directory, execute:
 
 ```bash
-ant dist     # build the project 
-ant test     # run tests
+./gradlew build     # linux/macos
+gradlew.bat build   # windows
 ```
 
-Following a `dist` build, the `dist/` directory will include a `.jar` file
-suitable for inclusion in your project.  
+After build completes, the `.build/libs/` directory will include a `.jar` file
+suitable for inclusion in your project. 
+
+## Binaries / Maven Repository
+
+A Maven repository containing the latest builds is also available:
+
+Repository URL: https://code.shrimpworks.za.net/artefacts 
+
+- Group: `net.shrimpworks`
+- Artefact: `unreal-package-lib`
+- Version: `1.+`
