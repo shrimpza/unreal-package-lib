@@ -137,6 +137,6 @@ A Maven repository containing the latest builds is also available:
 
 Repository URL: https://code.shrimpworks.za.net/artefacts 
 
-- GroupID: `net.shrimpworks`
+- Group: `net.shrimpworks`
 - Artefact: `unreal-package-lib`
 - Version: `1.+`
