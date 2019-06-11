@@ -32,6 +32,11 @@ publishing {
             }
         }
     }
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }
 
 dependencies {
@@ -44,14 +49,6 @@ jar {
                 'Implementation-Title': project.name,
                 'Implementation-Version': project.version
         )
-    }
-}
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
-        }
     }
 }
 
