@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
+import net.shrimpworks.unreal.packages.entities.Export;
+import net.shrimpworks.unreal.packages.entities.ExportedGroup;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.ImportedPackage;
 import net.shrimpworks.unreal.packages.entities.Name;
@@ -136,14 +138,26 @@ public class PackageTest {
 	public void readImports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
 			Collection<ImportedPackage> imports = pkg.imports();
-			ImportedPackage engine = imports.stream()
-											.filter(p -> p.name().name.equals("Engine"))
-											.findFirst().get();
-			assertNotNull(engine);
-			ImportedPackage.ImportedObject levelSummary = engine.objects().stream()
-																.filter(o -> o.name.name.equals("LevelSummary") && o.type.name.equals("Class"))
-																.findFirst().get();
+			ImportedPackage.ImportedObject levelSummary = imports.stream()
+																 .filter(p -> p.name().name.equals("Engine"))
+																 .flatMap(p -> p.objects().stream())
+																 .filter(o -> o.name.name.equals("LevelSummary") &&
+																			  o.type.name.equals("Class"))
+																 .findFirst().get();
 			assertNotNull(levelSummary);
+		}
+	}
+
+	@Test
+	public void readExports() throws IOException {
+		try (Package pkg = new Package(unrMap)) {
+			Collection<ExportedGroup> exports = pkg.exports();
+			Export levelInfo = exports.stream()
+									  .filter(g -> g.name().equals(Name.NONE))
+									  .flatMap(g -> g.objects().stream())
+									  .filter(e -> e.name.name.startsWith("LevelInfo")).findFirst()
+									  .get();
+			assertNotNull(levelInfo);
 		}
 	}
 }

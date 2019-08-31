@@ -12,25 +12,42 @@ import net.shrimpworks.unreal.packages.Package;
  */
 public abstract class Export implements Named {
 
-	final Package pkg;
+	protected final Package pkg;
+
 	public final int index;
 
-	public final ObjectReference objClass;
-	public final ObjectReference objSuper;
-	public final ObjectReference objGroup;
+	/**
+	 * Reference to the class of this export.
+	 */
+	public final ObjectReference classIndex;
+
+	/**
+	 * Reference to the super class of this export.
+	 */
+	public final ObjectReference classSuperIndex;
+
+	/**
+	 * Reference to the group this export is within.
+	 */
+	public final ObjectReference groupIndex;
+
+	/**
+	 * Name of the export.
+	 */
 	public final Name name;
+
 	public final int flags;
 	public final int size;
 	public final int pos;
 
 	Export(
-			Package pkg, int index, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags,
-			int size, int pos) {
+			Package pkg, int index, ObjectReference classIndex, ObjectReference classSuperIndex, ObjectReference groupIndex, Name name,
+			int flags, int size, int pos) {
 		this.pkg = pkg;
 		this.index = index;
-		this.objClass = objClass;
-		this.objSuper = objSuper;
-		this.objGroup = objGroup;
+		this.classIndex = classIndex;
+		this.classSuperIndex = classSuperIndex;
+		this.groupIndex = groupIndex;
 		this.name = name;
 		this.flags = flags;
 		this.size = size;
@@ -48,7 +65,7 @@ public abstract class Export implements Named {
 
 	@Override
 	public String toString() {
-		return String.format("Export [index=%s, objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-							 index, objClass, objSuper, objGroup, name, flags(), size, pos);
+		return String.format("Export [index=%s, classIndex=%s, classSuperIndex=%s, groupIndex=%s, name=%s, flags=%s, size=%s, pos=%s]",
+							 index, classIndex, classSuperIndex, groupIndex, name, flags(), size, pos);
 	}
 }

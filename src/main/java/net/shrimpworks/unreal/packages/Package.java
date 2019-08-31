@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedEntry;
 import net.shrimpworks.unreal.packages.entities.ExportedField;
+import net.shrimpworks.unreal.packages.entities.ExportedGroup;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.FieldTypes;
 import net.shrimpworks.unreal.packages.entities.Import;
@@ -197,7 +198,7 @@ public class Package implements Closeable {
 		this.fields = new ExportedField[exports.length];
 		for (int i = 0; i < exports.length; i++) {
 			ExportedEntry e = (ExportedEntry)exports[i];
-			if (FieldTypes.isField(e.objClass)) {
+			if (FieldTypes.isField(e.classIndex)) {
 				fields[i] = e.asField();
 			} else {
 				objects[i] = e.asObject();
@@ -248,6 +249,33 @@ public class Package implements Closeable {
 		return rootPackages.values();
 	}
 
+	public Collection<ExportedGroup> exports() {
+		Map<Named, ExportedGroup> rootGroups = new HashMap<>();
+		// get root level packages
+		for (Export e : this.exports) {
+			if (!e.classIndex.get().equals(Named.NULL)) {
+				Deque<Export> stack = new ArrayDeque<>();
+				stack.addFirst(e);
+
+				Named grp = e.groupIndex.get();
+				while (grp != Named.NULL) {
+					if (grp instanceof Export) {
+						stack.addFirst((Export)grp);
+						grp = ((Export)grp).groupIndex.get();
+					}
+				}
+
+				if (stack.size() == 1) {
+					rootGroups.computeIfAbsent(Named.NULL, added -> new ExportedGroup(added.name())).add(stack);
+				} else {
+					Export root = stack.removeFirst();
+					rootGroups.computeIfAbsent(root, added -> new ExportedGroup(added.name())).add(stack);
+				}
+			}
+		}
+		return rootGroups.values();
+	}
+
 	/**
 	 * Convenience to get all exported elements by a known class name.
 	 *
@@ -257,7 +285,7 @@ public class Package implements Closeable {
 	public Collection<Export> exportsByClassName(String className) {
 		Set<Export> exports = new HashSet<>();
 		for (Export ex : this.exports) {
-			Named type = ex.objClass.get();
+			Named type = ex.classIndex.get();
 			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
 				exports.add(ex);
 			}
@@ -275,7 +303,7 @@ public class Package implements Closeable {
 		Set<ExportedObject> exports = new HashSet<>();
 		for (ExportedObject ex : this.objects) {
 			if (ex == null) continue;
-			Named type = ex.objClass.get();
+			Named type = ex.classIndex.get();
 			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
 				exports.add(ex);
 			}
@@ -439,7 +467,7 @@ public class Package implements Closeable {
 
 		if (export.size <= 0) throw new IllegalStateException(String.format("Export %s has no associated object data!", export.name));
 
-		if (export.objClass.index == 0) return null;
+		if (export.classIndex.index == 0) return null;
 
 		reader.moveTo(export.pos);
 
