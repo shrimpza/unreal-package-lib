@@ -3,9 +3,11 @@ package net.shrimpworks.unreal.packages;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -224,66 +226,26 @@ public class Package implements Closeable {
 	}
 
 	public Collection<ImportedPackage> imports() {
-		List<ImportedPackage> imported = new ArrayList<>();
+		Map<Import, ImportedPackage> rootPackages = new HashMap<>();
+		// get root level packages
+		for (Import i : this.imports) {
+			if (!i.className.name.equals("Package")) {
+				Deque<Import> stack = new ArrayDeque<>();
+				stack.addFirst(i);
 
-		Map<String, String> m = new HashMap<>();
-
-		for (int i = 0; i < imports.length; i++) {
-			if (!imports[i].className.name.equals("Package")) {
-				Import grp = null;
-				Import pkg = null;
-				for (int b = i - 1; b >= 0; b--) {
-					if (grp == null
-						&& imports[b].className.name.equals("Package")
-						&& imports[b].name().equals(imports[i].packageName.get().name())) {
-						grp = imports[b];
-//						System.out.println(imports[b].name().name + "." + imports[i].name().name);
-					} else if (grp != null
-							   && imports[b].className.name.equals("Package")
-							   && imports[b].name().equals(grp.packageName.get().name())) {
-						pkg = imports[b];
-						break;
+				Named pkg = i.packageIndex.get();
+				while (pkg != Named.NULL) {
+					if (pkg instanceof Import) {
+						stack.addFirst((Import)pkg);
+						pkg = ((Import)pkg).packageIndex.get();
 					}
 				}
 
-				if (grp != null && pkg == null) {
-					System.out.printf("%s.<root>.%s%n", grp.name.name, imports[i].name.name);
-				} else if (grp != null && pkg != null) {
-					System.out.printf("%s.%s.%s%n", pkg.name.name, grp.name.name, imports[i].name.name);
-				} else {
-					System.out.printf("<unknown>.<unknown>.%s%n", imports[i].name.name);
-				}
+				Import root = stack.removeFirst();
+				rootPackages.computeIfAbsent(root, added -> new ImportedPackage(added.name)).add(stack);
 			}
-//
-//			if (imports[i].className.name.equals("Package")) {
-//				if (!imports[i].packageName.get().name().equals(Name.NONE)) {
-//					for (int b = i - 1; b >= 0; b--) {
-//						if (imports[b].className.name.equals("Package")
-//							&& imports[b].name().equals(imports[i].packageName.get().name())) {
-//							System.out.println(imports[b].name().name + "." + imports[i].name().name);
-//						}
-//					}
-//				}
-//			}
 		}
-
-		// get root level packages
-		imported.addAll(
-				Arrays.stream(imports)
-					  .filter(i -> i.className.name.equals(ImportedPackage.ImportType.Package.name())
-								   && i.packageName.get().name().equals(Name.NONE))
-					  .map(i -> new ImportedPackage(i.name())).collect(Collectors.toList()));
-
-		imported.forEach(pi ->
-								 Arrays.stream(imports)
-									   .filter(i -> i.packageName.get().name() == pi.name() && i.className.name.equals(
-											   ImportedPackage.ImportType.Package.name()))
-									   .forEach(i -> pi.packages.add(new ImportedPackage(i.name())))
-		);
-
-//		Arrays.stream(imports).filter(i -> i.className.name.equals(ImportedPackage.ImportType.Package.name())
-
-		return imported;
+		return rootPackages.values();
 	}
 
 	/**
@@ -329,7 +291,7 @@ public class Package implements Closeable {
 	 */
 	public ExportedObject objectByRef(ObjectReference ref) {
 		Named resolved = ref.get();
-		if (!(resolved instanceof Export)) throw new IllegalArgumentException("No object found for reference " + ref);
+		if (!(resolved instanceof Export)) throw new IllegalArgumentException("No exported object found for reference " + ref);
 
 		ExportedObject exportedObject = objects[((Export)resolved).index];
 

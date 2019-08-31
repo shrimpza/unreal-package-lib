@@ -19,17 +19,17 @@ public class Import implements Named {
 	/**
 	 * Package or group the import references.
 	 */
-	public final ObjectReference packageName;
+	public final ObjectReference packageIndex;
 
 	/**
 	 *
 	 */
 	public final Name name;
 
-	public Import(Name classPackage, Name className, ObjectReference packageName, Name name) {
+	public Import(Name classPackage, Name className, ObjectReference packageIndex, Name name) {
 		this.classPackage = classPackage;
 		this.className = className;
-		this.packageName = packageName;
+		this.packageIndex = packageIndex;
 		this.name = name;
 	}
 
@@ -40,6 +40,6 @@ public class Import implements Named {
 
 	@Override
 	public String toString() {
-		return String.format("Import [classPackage=%s, className=%s, packageName=%s, name=%s]", classPackage, className, packageName, name);
+		return String.format("Import [classPackage=%s, className=%s, packageName=%s, name=%s]", classPackage, className, packageIndex, name);
 	}
 }

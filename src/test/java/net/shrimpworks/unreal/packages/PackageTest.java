@@ -6,10 +6,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Collection;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
+import net.shrimpworks.unreal.packages.entities.ImportedPackage;
 import net.shrimpworks.unreal.packages.entities.Name;
 import net.shrimpworks.unreal.packages.entities.objects.Model;
 import net.shrimpworks.unreal.packages.entities.objects.Object;
@@ -127,6 +129,21 @@ public class PackageTest {
 			} finally {
 				Files.deleteIfExists(tmpScreenshot);
 			}
+		}
+	}
+
+	@Test
+	public void readImports() throws IOException {
+		try (Package pkg = new Package(unrMap)) {
+			Collection<ImportedPackage> imports = pkg.imports();
+			ImportedPackage engine = imports.stream()
+											.filter(p -> p.name().name.equals("Engine"))
+											.findFirst().get();
+			assertNotNull(engine);
+			ImportedPackage.ImportedObject levelSummary = engine.objects().stream()
+																.filter(o -> o.name.name.equals("LevelSummary") && o.type.name.equals("Class"))
+																.findFirst().get();
+			assertNotNull(levelSummary);
 		}
 	}
 }
