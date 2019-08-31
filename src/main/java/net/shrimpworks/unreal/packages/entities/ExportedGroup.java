@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class ExportedGroup implements Named {
 
-	private final Map<Export, ExportedGroup> groups;
+	private final Map<Name, ExportedGroup> groups;
 	private final Set<Export> objects;
 
 	private final Name name;
@@ -25,7 +25,7 @@ public class ExportedGroup implements Named {
 		Export next = exports.removeFirst();
 		if (next.classIndex.get().equals(Named.NULL)) {
 			// the class for a group appears to be blank in the case of groups within a package
-			groups.computeIfAbsent(next, added -> new ExportedGroup(added.name)).add(exports);
+			groups.computeIfAbsent(next.name, ExportedGroup::new).add(exports);
 		} else {
 			this.objects.add(next);
 		}
@@ -37,8 +37,8 @@ public class ExportedGroup implements Named {
 		return name;
 	}
 
-	public Collection<ExportedGroup> packages() {
-		return Collections.unmodifiableCollection(groups.values());
+	public Map<Name, ExportedGroup> groups() {
+		return Collections.unmodifiableMap(groups);
 	}
 
 	public Collection<Export> objects() {

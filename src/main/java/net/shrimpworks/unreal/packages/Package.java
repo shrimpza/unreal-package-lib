@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -226,8 +227,9 @@ public class Package implements Closeable {
 		return PackageFlag.fromFlags(flags);
 	}
 
-	public Collection<ImportedPackage> imports() {
-		Map<Import, ImportedPackage> rootPackages = new HashMap<>();
+
+	public Map<Name, ImportedPackage> imports() {
+		Map<Name, ImportedPackage> rootPackages = new HashMap<>();
 		// get root level packages
 		for (Import i : this.imports) {
 			if (!i.className.name.equals("Package")) {
@@ -243,14 +245,14 @@ public class Package implements Closeable {
 				}
 
 				Import root = stack.removeFirst();
-				rootPackages.computeIfAbsent(root, added -> new ImportedPackage(added.name)).add(stack);
+				rootPackages.computeIfAbsent(root.name(), ImportedPackage::new).add(stack);
 			}
 		}
-		return rootPackages.values();
+		return Collections.unmodifiableMap(rootPackages);
 	}
 
-	public Collection<ExportedGroup> exports() {
-		Map<Named, ExportedGroup> rootGroups = new HashMap<>();
+	public Map<Name, ExportedGroup> exports() {
+		Map<Name, ExportedGroup> rootGroups = new HashMap<>();
 		// get root level packages
 		for (Export e : this.exports) {
 			if (!e.classIndex.get().equals(Named.NULL)) {
@@ -266,14 +268,14 @@ public class Package implements Closeable {
 				}
 
 				if (stack.size() == 1) {
-					rootGroups.computeIfAbsent(Named.NULL, added -> new ExportedGroup(added.name())).add(stack);
+					rootGroups.computeIfAbsent(Name.NONE, ExportedGroup::new).add(stack);
 				} else {
 					Export root = stack.removeFirst();
-					rootGroups.computeIfAbsent(root, added -> new ExportedGroup(added.name())).add(stack);
+					rootGroups.computeIfAbsent(root.name(), ExportedGroup::new).add(stack);
 				}
 			}
 		}
-		return rootGroups.values();
+		return Collections.unmodifiableMap(rootGroups);
 	}
 
 	/**
@@ -342,6 +344,18 @@ public class Package implements Closeable {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Convenience to get an object by its export representation.
+	 *
+	 * @return found object
+	 * @throws IllegalArgumentException the object could not be found or does not exist
+	 */
+	public ExportedObject objectByExport(Export export) {
+		ExportedObject exportedObject = objects[export.index];
+		if (exportedObject == null) throw new IllegalArgumentException("Found export is not an object " + export);
+		return exportedObject;
 	}
 
 	// --- primary data table readers

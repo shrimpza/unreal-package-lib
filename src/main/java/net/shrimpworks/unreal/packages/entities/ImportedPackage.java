@@ -26,7 +26,7 @@ public class ImportedPackage implements Named {
 		}
 	}
 
-	private final Map<Import, ImportedPackage> packages;
+	private final Map<Name, ImportedPackage> packages;
 	private final Set<ImportedObject> objects;
 	private final Name name;
 
@@ -39,7 +39,7 @@ public class ImportedPackage implements Named {
 	public ImportedPackage add(Deque<Import> imports) {
 		Import next = imports.removeFirst();
 		if (next.className.name.equals("Package")) {
-			packages.computeIfAbsent(next, added -> new ImportedPackage(added.name)).add(imports);
+			packages.computeIfAbsent(next.name, ImportedPackage::new).add(imports);
 		} else {
 			this.objects.add(new ImportedObject(next.className, next.name));
 		}
@@ -51,8 +51,8 @@ public class ImportedPackage implements Named {
 		return name;
 	}
 
-	public Collection<ImportedPackage> packages() {
-		return Collections.unmodifiableCollection(packages.values());
+	public Map<Name, ImportedPackage> packages() {
+		return Collections.unmodifiableMap(packages);
 	}
 
 	public Collection<ImportedObject> objects() {

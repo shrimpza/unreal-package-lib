@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Collection;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -137,13 +137,13 @@ public class PackageTest {
 	@Test
 	public void readImports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
-			Collection<ImportedPackage> imports = pkg.imports();
-			ImportedPackage.ImportedObject levelSummary = imports.stream()
-																 .filter(p -> p.name().name.equals("Engine"))
-																 .flatMap(p -> p.objects().stream())
-																 .filter(o -> o.name.name.equals("LevelSummary") &&
-																			  o.type.name.equals("Class"))
-																 .findFirst().get();
+			Map<Name, ImportedPackage> imports = pkg.imports();
+			ImportedPackage engine = imports.get(new Name("Engine"));
+			assertNotNull(engine);
+			ImportedPackage.ImportedObject levelSummary = engine.objects().stream()
+																.filter(o -> o.name.name.equals("LevelSummary") &&
+																			 o.type.name.equals("Class"))
+																.findFirst().get();
 			assertNotNull(levelSummary);
 		}
 	}
@@ -151,13 +151,14 @@ public class PackageTest {
 	@Test
 	public void readExports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
-			Collection<ExportedGroup> exports = pkg.exports();
-			Export levelInfo = exports.stream()
-									  .filter(g -> g.name().equals(Name.NONE))
-									  .flatMap(g -> g.objects().stream())
-									  .filter(e -> e.name.name.startsWith("LevelInfo")).findFirst()
-									  .get();
+			Map<Name, ExportedGroup> exports = pkg.exports();
+			ExportedGroup local = exports.get(Name.NONE);
+			assertNotNull(local);
+			Export levelInfo = local.objects().stream()
+									.filter(e -> e.name.name.startsWith("LevelInfo"))
+									.findFirst().get();
 			assertNotNull(levelInfo);
+			assertNotNull(pkg.objectByExport(levelInfo));
 		}
 	}
 }
