@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedEntry;
 import net.shrimpworks.unreal.packages.entities.ExportedField;
-import net.shrimpworks.unreal.packages.entities.ExportedGroup;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.FieldTypes;
 import net.shrimpworks.unreal.packages.entities.Import;
@@ -227,7 +226,6 @@ public class Package implements Closeable {
 		return PackageFlag.fromFlags(flags);
 	}
 
-
 	public Map<Name, ImportedPackage> imports() {
 		Map<Name, ImportedPackage> rootPackages = new HashMap<>();
 		// get root level packages
@@ -251,31 +249,10 @@ public class Package implements Closeable {
 		return Collections.unmodifiableMap(rootPackages);
 	}
 
-	public Map<Name, ExportedGroup> exports() {
-		Map<Name, ExportedGroup> rootGroups = new HashMap<>();
-		// get root level packages
-		for (Export e : this.exports) {
-			if (!e.classIndex.get().equals(Named.NULL)) {
-				Deque<Export> stack = new ArrayDeque<>();
-				stack.addFirst(e);
-
-				Named grp = e.groupIndex.get();
-				while (grp != Named.NULL) {
-					if (grp instanceof Export) {
-						stack.addFirst((Export)grp);
-						grp = ((Export)grp).groupIndex.get();
-					}
-				}
-
-				if (stack.size() == 1) {
-					rootGroups.computeIfAbsent(Name.NONE, ExportedGroup::new).add(stack);
-				} else {
-					Export root = stack.removeFirst();
-					rootGroups.computeIfAbsent(root.name(), ExportedGroup::new).add(stack);
-				}
-			}
-		}
-		return Collections.unmodifiableMap(rootGroups);
+	public Set<Export> rootExports() {
+		return Arrays.stream(exports)
+					 .filter(e -> e.groupName().equals(Name.NONE))
+					 .collect(Collectors.toSet());
 	}
 
 	/**

@@ -5,7 +5,7 @@ import java.util.Set;
 /**
  * Represents a name from a package's names table.
  */
-public class Name {
+public class Name implements Comparable<Name> {
 
 	public static final Name NONE = new Name("None", 0);
 
@@ -41,5 +41,10 @@ public class Name {
 	@Override
 	public int hashCode() {
 		return java.util.Objects.hash(name);
+	}
+
+	@Override
+	public int compareTo(Name other) {
+		return name.compareTo(other.name);
 	}
 }

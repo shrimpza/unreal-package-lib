@@ -6,9 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
-import net.shrimpworks.unreal.packages.entities.ExportedGroup;
+import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ImportedPackage;
 
 public class DependencyCheck {
@@ -20,10 +22,10 @@ public class DependencyCheck {
 			Files.copy(gis, map, StandardCopyOption.REPLACE_EXISTING);
 		}
 
-//		Path map = Paths.get("/home/shrimp/tmp/UPB-E3L6D.unr");
+//		Path map = Paths.get("/home/shrimp/tmp/UT/System/Engine.u");
 		try (Package pkg = new Package(map)) {
 //			System.out.println(prettyPrintImports(pkg.imports().values(), ""));
-			System.out.println(prettyPrintExports(pkg.exports().values(), ""));
+			System.out.println(prettyPrintExports(pkg.rootExports(), ""));
 		}
 	}
 
@@ -38,13 +40,18 @@ public class DependencyCheck {
 		return sb.toString();
 	}
 
-	private static String prettyPrintExports(Collection<ExportedGroup> exports, String padded) {
+	private static String prettyPrintExports(Collection<Export> exports, String padded) {
 		StringBuilder sb = new StringBuilder();
-		exports.forEach(e -> {
-			String nextPad = String.format("  %s", padded);
-			sb.append(String.format("%s%s%n", padded, e.name().name));
-			sb.append(prettyPrintExports(e.groups().values(), nextPad));
-			e.objects().forEach(io -> sb.append(String.format("%s%s: %s%n", nextPad, io.name.name, io.classIndex.get().name().name)));
+		exports.stream().sorted(Comparator.comparing(Export::name)).forEach(e -> {
+			String childPad = String.format("  %s", padded);
+			sb.append(String.format("%s%s: %s%n", padded, e.name().name, e.classIndex.get().name().name));
+			e.children().stream().sorted(Comparator.comparing(Export::name)).forEach(child -> {
+				sb.append(String.format("%s%s: %s%n", childPad, child.name.name, child.classIndex.get().name().name));
+				Set<Export> subChildren = child.children();
+				if (!subChildren.isEmpty()) {
+					sb.append(prettyPrintExports(subChildren, String.format("  %s", childPad)));
+				}
+			});
 		});
 		return sb.toString();
 	}

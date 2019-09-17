@@ -12,10 +12,12 @@ public class ImportedPackage implements Named {
 
 	public static class ImportedObject implements Named {
 
+		public final ImportedPackage group;
 		public final Name type;
 		public final Name name;
 
-		public ImportedObject(Name type, Name name) {
+		public ImportedObject(ImportedPackage group, Name type, Name name) {
+			this.group = group;
 			this.type = type;
 			this.name = name;
 		}
@@ -41,7 +43,7 @@ public class ImportedPackage implements Named {
 		if (next.className.name.equals("Package")) {
 			packages.computeIfAbsent(next.name, ImportedPackage::new).add(imports);
 		} else {
-			this.objects.add(new ImportedObject(next.className, next.name));
+			this.objects.add(new ImportedObject(this, next.className, next.name));
 		}
 		return this;
 	}

@@ -7,11 +7,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
 import net.shrimpworks.unreal.packages.entities.Export;
-import net.shrimpworks.unreal.packages.entities.ExportedGroup;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.ImportedPackage;
 import net.shrimpworks.unreal.packages.entities.Name;
@@ -151,10 +151,9 @@ public class PackageTest {
 	@Test
 	public void readExports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
-			Map<Name, ExportedGroup> exports = pkg.exports();
-			ExportedGroup local = exports.get(Name.NONE);
+			Set<Export> local = pkg.rootExports();
 			assertNotNull(local);
-			Export levelInfo = local.objects().stream()
+			Export levelInfo = local.stream()
 									.filter(e -> e.name.name.startsWith("LevelInfo"))
 									.findFirst().get();
 			assertNotNull(levelInfo);
