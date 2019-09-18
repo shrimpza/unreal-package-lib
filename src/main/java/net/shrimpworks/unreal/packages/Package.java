@@ -3,17 +3,12 @@ package net.shrimpworks.unreal.packages;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
@@ -24,7 +19,6 @@ import net.shrimpworks.unreal.packages.entities.ExportedField;
 import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.FieldTypes;
 import net.shrimpworks.unreal.packages.entities.Import;
-import net.shrimpworks.unreal.packages.entities.ImportedPackage;
 import net.shrimpworks.unreal.packages.entities.Name;
 import net.shrimpworks.unreal.packages.entities.Named;
 import net.shrimpworks.unreal.packages.entities.ObjectFlag;
@@ -226,27 +220,10 @@ public class Package implements Closeable {
 		return PackageFlag.fromFlags(flags);
 	}
 
-	public Map<Name, ImportedPackage> imports() {
-		Map<Name, ImportedPackage> rootPackages = new HashMap<>();
-		// get root level packages
-		for (Import i : this.imports) {
-			if (!i.className.name.equals("Package")) {
-				Deque<Import> stack = new ArrayDeque<>();
-				stack.addFirst(i);
-
-				Named pkg = i.packageIndex.get();
-				while (pkg != Named.NULL) {
-					if (pkg instanceof Import) {
-						stack.addFirst((Import)pkg);
-						pkg = ((Import)pkg).packageIndex.get();
-					}
-				}
-
-				Import root = stack.removeFirst();
-				rootPackages.computeIfAbsent(root.name(), ImportedPackage::new).add(stack);
-			}
-		}
-		return Collections.unmodifiableMap(rootPackages);
+	public Set<Import> packageImports() {
+		return Arrays.stream(imports)
+					 .filter(i -> i.className.name.equals("Package"))
+					 .collect(Collectors.toSet());
 	}
 
 	public Set<Export> rootExports() {
@@ -395,7 +372,7 @@ public class Package implements Closeable {
 
 		for (int i = 0; i < count; i++) {
 			reader.ensureRemaining(28); // more-or-less, probably less
-			imports[i] = readImport();
+			imports[i] = readImport(i);
 		}
 
 		return imports;
@@ -430,8 +407,10 @@ public class Package implements Closeable {
 	 *
 	 * @return a new export
 	 */
-	private Import readImport() {
+	private Import readImport(int index) {
 		return new Import(
+				this,
+				index,
 				names[reader.readIndex()], // package file
 				names[reader.readIndex()], // class
 				new ObjectReference(this, reader.readInt()),   // package name

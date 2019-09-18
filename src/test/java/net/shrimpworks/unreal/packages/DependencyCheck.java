@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import net.shrimpworks.unreal.packages.entities.Export;
-import net.shrimpworks.unreal.packages.entities.ImportedPackage;
+import net.shrimpworks.unreal.packages.entities.Import;
 
 public class DependencyCheck {
 
@@ -24,20 +24,9 @@ public class DependencyCheck {
 
 //		Path map = Paths.get("/home/shrimp/tmp/UT/System/Engine.u");
 		try (Package pkg = new Package(map)) {
-//			System.out.println(prettyPrintImports(pkg.imports().values(), ""));
+			System.out.println(prettyPrintImports(pkg.packageImports(), ""));
 			System.out.println(prettyPrintExports(pkg.rootExports(), ""));
 		}
-	}
-
-	private static String prettyPrintImports(Collection<ImportedPackage> imports, String padded) {
-		StringBuilder sb = new StringBuilder();
-		imports.forEach(i -> {
-			String nextPad = String.format("  %s", padded);
-			sb.append(String.format("%s%s%n", padded, i.name().name));
-			sb.append(prettyPrintImports(i.packages().values(), nextPad));
-			i.objects().forEach(io -> sb.append(String.format("%s%s: %s%n", nextPad, io.name.name, io.type.name)));
-		});
-		return sb.toString();
 	}
 
 	private static String prettyPrintExports(Collection<Export> exports, String padded) {
@@ -50,6 +39,22 @@ public class DependencyCheck {
 				Set<Export> subChildren = child.children();
 				if (!subChildren.isEmpty()) {
 					sb.append(prettyPrintExports(subChildren, String.format("  %s", childPad)));
+				}
+			});
+		});
+		return sb.toString();
+	}
+
+	private static String prettyPrintImports(Collection<Import> imports, String padded) {
+		StringBuilder sb = new StringBuilder();
+		imports.stream().sorted(Comparator.comparing(Import::name)).forEach(i -> {
+			String childPad = String.format("  %s", padded);
+			sb.append(String.format("%s%s: %s%n", padded, i.name().name, i.className.name));
+			i.children().stream().sorted(Comparator.comparing(Import::name)).forEach(child -> {
+				sb.append(String.format("%s%s: %s%n", childPad, child.name.name, child.className.name));
+				Set<Import> subChildren = child.children();
+				if (!subChildren.isEmpty()) {
+					sb.append(prettyPrintImports(subChildren, String.format("  %s", childPad)));
 				}
 			});
 		});

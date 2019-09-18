@@ -24,17 +24,21 @@ public class ObjectReference {
 		this.index = index;
 	}
 
-	public Named get() {
+	public Named get(boolean simpleExports) {
 		if (index < 0) {
 			return pkg.imports[(-index) - 1];
 		} else if (index > 0) {
 			// find most specific match
-			if (pkg.objects[index - 1] != null) return pkg.objects[index - 1];
-			else if (pkg.fields[index - 1] != null) return pkg.fields[index - 1];
+			if (!simpleExports && pkg.objects[index - 1] != null) return pkg.objects[index - 1];
+			else if (!simpleExports && pkg.fields[index - 1] != null) return pkg.fields[index - 1];
 			else return pkg.exports[index - 1];
 		} else {
 			return Named.NULL;
 		}
+	}
+
+	public Named get() {
+		return get(false);
 	}
 
 	@Override

@@ -1,7 +1,6 @@
 package net.shrimpworks.unreal.packages.entities;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -65,12 +64,22 @@ public abstract class Export implements Named {
 		return ObjectFlag.fromFlags(flags);
 	}
 
+	/**
+	 * Get the name of the group this export belongs to.
+	 *
+	 * @return parent group
+	 */
 	public Name groupName() {
 		return groupIndex.get().name();
 	}
 
+	/**
+	 * Get exported groups, objects and properties under this export.
+	 *
+	 * @return child exports
+	 */
 	public Set<Export> children() {
-		return Arrays.stream(pkg.exports).filter(e -> e.groupIndex.index == index + 1).collect(Collectors.toSet());
+		return Arrays.stream(pkg.exports).filter(e -> e.groupIndex.get(true) == this).collect(Collectors.toSet());
 	}
 
 	@Override
