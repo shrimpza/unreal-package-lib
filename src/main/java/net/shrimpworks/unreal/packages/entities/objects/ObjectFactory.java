@@ -46,7 +46,7 @@ public enum ObjectFactory {
 	public static Object newInstance(
 			Package pkg, PackageReader reader, Export export, ObjectHeader header, Collection<Property> properties, int dataStart) {
 
-		Named type = export.objClass.get();
+		Named type = export.classIndex.get();
 
 		try {
 			ObjectFactory objectFactory = ObjectFactory.valueOf(type.name().name);

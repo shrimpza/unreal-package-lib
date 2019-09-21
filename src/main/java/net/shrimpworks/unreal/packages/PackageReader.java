@@ -21,13 +21,16 @@ import java.util.Arrays;
  */
 public class PackageReader implements Closeable {
 
+	private static final int READ_BUFFER = 1024 * 8; // use an 8k read buffer
+
+	public final ReaderStats stats = new ReaderStats();
+
 	private final SeekableByteChannel channel;
 	private final ByteBuffer buffer;
 
 	public PackageReader(SeekableByteChannel channel) {
 		this.channel = channel;
-		this.buffer = ByteBuffer.allocateDirect(1024 * 8) // allocate an 8k buffer for read operations
-								.order(ByteOrder.LITTLE_ENDIAN);
+		this.buffer = ByteBuffer.allocateDirect(READ_BUFFER).order(ByteOrder.LITTLE_ENDIAN);
 	}
 
 	public PackageReader(Path packageFile) throws IOException {
@@ -90,6 +93,8 @@ public class PackageReader implements Closeable {
 			buffer.flip();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not move to position " + pos + " within package file", e);
+		} finally {
+			stats.moveToCount++;
 		}
 	}
 
@@ -108,6 +113,8 @@ public class PackageReader implements Closeable {
 			buffer.flip();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not move by " + amount + " bytes within channel", e);
+		} finally {
+			stats.moveRelativeCount++;
 		}
 	}
 
@@ -118,11 +125,15 @@ public class PackageReader implements Closeable {
 	 * @param minRemaining bytes
 	 */
 	public void ensureRemaining(int minRemaining) {
-		if (buffer.capacity() < minRemaining) {
-			throw new IllegalArgumentException("Impossible to fill buffer with " + minRemaining + " bytes");
-		}
+		try {
+			if (buffer.capacity() < minRemaining) {
+				throw new IllegalArgumentException("Impossible to fill buffer with " + minRemaining + " bytes");
+			}
 
-		if (buffer.remaining() < minRemaining) fillBuffer();
+			if (buffer.remaining() < minRemaining) fillBuffer();
+		} finally {
+			stats.ensureRemainingCount++;
+		}
 	}
 
 	/**
@@ -136,30 +147,17 @@ public class PackageReader implements Closeable {
 			buffer.flip();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read from package file", e);
+		} finally {
+			stats.fillBufferCount++;
 		}
 	}
 
 	/**
 	 * Get the current read position within the file.
 	 *
-	 * @return position
+	 * @return position in package
 	 */
 	public int currentPosition() {
-		try {
-			return (int)(channel.position() - buffer.remaining());
-		} catch (IOException e) {
-			throw new IllegalStateException("Could not determine current file position");
-		}
-	}
-
-	/**
-	 * Get the current read position (number of bytes read), relative to the
-	 * last {@link #moveTo(long)}, {@link #fillBuffer()}, or
-	 * {@link #ensureRemaining(int)} operation.
-	 *
-	 * @return bytes read
-	 */
-	public int currentReadPosition() {
 		try {
 			return (int)(channel.position() - buffer.remaining());
 		} catch (IOException e) {
@@ -231,6 +229,17 @@ public class PackageReader implements Closeable {
 		return negative ? num * -1 : num;
 	}
 
+	/**
+	 * Read a string from the current buffer position.
+	 * <p>
+	 * The <code>packageVersion</code> parameter is required since string read
+	 * operations differ by version.
+	 * <p>
+	 * The length of the string will be determined automatically.
+	 *
+	 * @param packageVersion package version
+	 * @return a string
+	 */
 	public String readString(int packageVersion) {
 		return readString(packageVersion, -1);
 	}
@@ -240,11 +249,15 @@ public class PackageReader implements Closeable {
 	 * <p>
 	 * The <code>packageVersion</code> parameter is required since string read
 	 * operations differ by version.
+	 * <p>
+	 * For some properties, length is provided as part of the property and not
+	 * at the start of the string in the case of names or other string values.
 	 *
 	 * @param packageVersion package version
+	 * @param length         length of the string to read, or -1 to read it automatically
 	 * @return a string
 	 */
-	public String readString(int packageVersion, int size) {
+	public String readString(int packageVersion, int length) {
 		String string = "";
 
 		if (packageVersion < 64) {
@@ -257,7 +270,7 @@ public class PackageReader implements Closeable {
 			}
 			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.ISO_8859_1);
 		} else {
-			int len = size > -1 ? size : packageVersion > 117 ? readIndex() : readByte() & 0xFF;
+			int len = length > -1 ? length : packageVersion > 117 ? readIndex() : readByte() & 0xFF;
 			if (len > 0) {
 				byte[] val = new byte[len];
 				ensureRemaining(len);
@@ -267,5 +280,19 @@ public class PackageReader implements Closeable {
 		}
 
 		return string.trim();
+	}
+
+	public static class ReaderStats {
+
+		public int moveToCount;
+		public int moveRelativeCount;
+		public int ensureRemainingCount;
+		public int fillBufferCount;
+
+		@Override
+		public String toString() {
+			return String.format("ReaderStats [moveToCount=%s, moveRelativeCount=%s, ensureRemainingCount=%s, fillBufferCount=%s]",
+								 moveToCount, moveRelativeCount, ensureRemainingCount, fillBufferCount);
+		}
 	}
 }

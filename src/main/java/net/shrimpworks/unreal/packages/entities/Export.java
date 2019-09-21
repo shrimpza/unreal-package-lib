@@ -1,6 +1,8 @@
 package net.shrimpworks.unreal.packages.entities;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import net.shrimpworks.unreal.packages.Package;
 
@@ -12,25 +14,44 @@ import net.shrimpworks.unreal.packages.Package;
  */
 public abstract class Export implements Named {
 
-	final Package pkg;
+	protected final Package pkg;
+
 	public final int index;
 
-	public final ObjectReference objClass;
-	public final ObjectReference objSuper;
-	public final ObjectReference objGroup;
+	/**
+	 * Reference to the class of this export.
+	 */
+	public final ObjectReference classIndex;
+
+	/**
+	 * Reference to the super class of this export.
+	 */
+	public final ObjectReference classSuperIndex;
+
+	/**
+	 * Reference to the group this export is within.
+	 */
+	public final ObjectReference groupIndex;
+
+	/**
+	 * Name of the export.
+	 */
 	public final Name name;
+
 	public final int flags;
 	public final int size;
 	public final int pos;
 
-	Export(
-			Package pkg, int index, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags,
-			int size, int pos) {
+	// cached collection of children
+	private Set<Export> children;
+
+	Export(Package pkg, int index, ObjectReference classIndex, ObjectReference classSuperIndex, ObjectReference groupIndex, Name name,
+		   int flags, int size, int pos) {
 		this.pkg = pkg;
 		this.index = index;
-		this.objClass = objClass;
-		this.objSuper = objSuper;
-		this.objGroup = objGroup;
+		this.classIndex = classIndex;
+		this.classSuperIndex = classSuperIndex;
+		this.groupIndex = groupIndex;
 		this.name = name;
 		this.flags = flags;
 		this.size = size;
@@ -46,9 +67,28 @@ public abstract class Export implements Named {
 		return ObjectFlag.fromFlags(flags);
 	}
 
+	/**
+	 * Get the name of the group this export belongs to.
+	 *
+	 * @return parent group
+	 */
+	public Name groupName() {
+		return groupIndex.get().name();
+	}
+
+	/**
+	 * Get exported groups, objects and properties under this export.
+	 *
+	 * @return child exports
+	 */
+	public Set<Export> children() {
+		if (children == null) children = Arrays.stream(pkg.exports).filter(e -> e.groupIndex.get(true) == this).collect(Collectors.toSet());
+		return children;
+	}
+
 	@Override
 	public String toString() {
-		return String.format("Export [index=%s, objClass=%s, objSuper=%s, objGroup=%s, name=%s, flags=%s, size=%s, pos=%s]",
-							 index, objClass, objSuper, objGroup, name, flags(), size, pos);
+		return String.format("Export [index=%s, classIndex=%s, classSuperIndex=%s, groupIndex=%s, name=%s, flags=%s, size=%s, pos=%s]",
+							 index, classIndex, classSuperIndex, groupIndex, name, flags(), size, pos);
 	}
 }

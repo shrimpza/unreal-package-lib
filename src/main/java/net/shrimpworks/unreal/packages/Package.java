@@ -192,7 +192,7 @@ public class Package implements Closeable {
 		this.fields = new ExportedField[exports.length];
 		for (int i = 0; i < exports.length; i++) {
 			ExportedEntry e = (ExportedEntry)exports[i];
-			if (FieldTypes.isField(e.objClass)) {
+			if (FieldTypes.isField(e.classIndex)) {
 				fields[i] = e.asField();
 			} else {
 				objects[i] = e.asObject();
@@ -220,6 +220,18 @@ public class Package implements Closeable {
 		return PackageFlag.fromFlags(flags);
 	}
 
+	public Set<Import> packageImports() {
+		return Arrays.stream(imports)
+					 .filter(i -> i.className.name.equals("Package"))
+					 .collect(Collectors.toSet());
+	}
+
+	public Set<Export> rootExports() {
+		return Arrays.stream(exports)
+					 .filter(e -> e.groupName().equals(Name.NONE))
+					 .collect(Collectors.toSet());
+	}
+
 	/**
 	 * Convenience to get all exported elements by a known class name.
 	 *
@@ -229,7 +241,7 @@ public class Package implements Closeable {
 	public Collection<Export> exportsByClassName(String className) {
 		Set<Export> exports = new HashSet<>();
 		for (Export ex : this.exports) {
-			Named type = ex.objClass.get();
+			Named type = ex.classIndex.get();
 			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
 				exports.add(ex);
 			}
@@ -247,7 +259,7 @@ public class Package implements Closeable {
 		Set<ExportedObject> exports = new HashSet<>();
 		for (ExportedObject ex : this.objects) {
 			if (ex == null) continue;
-			Named type = ex.objClass.get();
+			Named type = ex.classIndex.get();
 			if (type instanceof Import && ((Import)type).name.name.equals(className)) {
 				exports.add(ex);
 			}
@@ -263,7 +275,7 @@ public class Package implements Closeable {
 	 */
 	public ExportedObject objectByRef(ObjectReference ref) {
 		Named resolved = ref.get();
-		if (!(resolved instanceof Export)) throw new IllegalArgumentException("No object found for reference " + ref);
+		if (!(resolved instanceof Export)) throw new IllegalArgumentException("No exported object found for reference " + ref);
 
 		ExportedObject exportedObject = objects[((Export)resolved).index];
 
@@ -286,6 +298,18 @@ public class Package implements Closeable {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Convenience to get an object by its export representation.
+	 *
+	 * @return found object
+	 * @throws IllegalArgumentException the object could not be found or does not exist
+	 */
+	public ExportedObject objectByExport(Export export) {
+		ExportedObject exportedObject = objects[export.index];
+		if (exportedObject == null) throw new IllegalArgumentException("Found export is not an object " + export);
+		return exportedObject;
 	}
 
 	// --- primary data table readers
@@ -348,7 +372,7 @@ public class Package implements Closeable {
 
 		for (int i = 0; i < count; i++) {
 			reader.ensureRemaining(28); // more-or-less, probably less
-			imports[i] = readImport();
+			imports[i] = readImport(i);
 		}
 
 		return imports;
@@ -383,8 +407,10 @@ public class Package implements Closeable {
 	 *
 	 * @return a new export
 	 */
-	private Import readImport() {
+	private Import readImport(int index) {
 		return new Import(
+				this,
+				index,
 				names[reader.readIndex()], // package file
 				names[reader.readIndex()], // class
 				new ObjectReference(this, reader.readInt()),   // package name
@@ -411,7 +437,7 @@ public class Package implements Closeable {
 
 		if (export.size <= 0) throw new IllegalStateException(String.format("Export %s has no associated object data!", export.name));
 
-		if (export.objClass.index == 0) return null;
+		if (export.classIndex.index == 0) return null;
 
 		reader.moveTo(export.pos);
 
@@ -435,7 +461,7 @@ public class Package implements Closeable {
 		}
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = reader.currentReadPosition();
+		long propsLength = reader.currentPosition();
 
 		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, (int)propsLength);
 

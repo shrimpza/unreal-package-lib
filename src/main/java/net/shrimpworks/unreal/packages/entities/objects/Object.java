@@ -58,7 +58,7 @@ public class Object {
 	 * @return object class
 	 */
 	public String className() {
-		return export.objClass.get().name().name;
+		return export.classIndex.get().name().name;
 	}
 
 	@Override
