@@ -222,7 +222,7 @@ public class Package implements Closeable {
 
 	public Set<Import> packageImports() {
 		return Arrays.stream(imports)
-					 .filter(i -> i.className.name.equals("Package"))
+					 .filter(i -> i.packageIndex.get().name().equals(Name.NONE))
 					 .collect(Collectors.toSet());
 	}
 
