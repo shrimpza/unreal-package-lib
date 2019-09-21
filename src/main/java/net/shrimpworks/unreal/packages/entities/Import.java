@@ -32,9 +32,12 @@ public class Import implements Named {
 	public final ObjectReference packageIndex;
 
 	/**
-	 *
+	 * Name of the imported package or object.
 	 */
 	public final Name name;
+
+	// cached collection of children
+	private Set<Import> children;
 
 	public Import(Package pkg, int index, Name classPackage, Name className, ObjectReference packageIndex, Name name) {
 		this.pkg = pkg;
@@ -56,7 +59,8 @@ public class Import implements Named {
 	 * @return child imports
 	 */
 	public Set<Import> children() {
-		return Arrays.stream(pkg.imports).filter(i -> i.packageIndex.get() == this).collect(Collectors.toSet());
+		if (children == null) children = Arrays.stream(pkg.imports).filter(i -> i.packageIndex.get() == this).collect(Collectors.toSet());
+		return children;
 	}
 
 	@Override

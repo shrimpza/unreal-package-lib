@@ -461,7 +461,7 @@ public class Package implements Closeable {
 		}
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = reader.currentReadPosition();
+		long propsLength = reader.currentPosition();
 
 		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, (int)propsLength);
 

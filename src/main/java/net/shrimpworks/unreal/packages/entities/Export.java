@@ -42,6 +42,9 @@ public abstract class Export implements Named {
 	public final int size;
 	public final int pos;
 
+	// cached collection of children
+	private Set<Export> children;
+
 	Export(Package pkg, int index, ObjectReference classIndex, ObjectReference classSuperIndex, ObjectReference groupIndex, Name name,
 		   int flags, int size, int pos) {
 		this.pkg = pkg;
@@ -79,7 +82,8 @@ public abstract class Export implements Named {
 	 * @return child exports
 	 */
 	public Set<Export> children() {
-		return Arrays.stream(pkg.exports).filter(e -> e.groupIndex.get(true) == this).collect(Collectors.toSet());
+		if (children == null) children = Arrays.stream(pkg.exports).filter(e -> e.groupIndex.get(true) == this).collect(Collectors.toSet());
+		return children;
 	}
 
 	@Override
