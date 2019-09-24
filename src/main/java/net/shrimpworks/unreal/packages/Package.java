@@ -220,16 +220,36 @@ public class Package implements Closeable {
 		return PackageFlag.fromFlags(flags);
 	}
 
-	public Set<Import> packageImports() {
-		return Arrays.stream(imports)
-					 .filter(i -> i.packageIndex.get().name().equals(Name.NONE))
-					 .collect(Collectors.toSet());
+	/**
+	 * Find the imported packages which this package depends on.
+	 * <p>
+	 * Individual elements required from each package can be inspected via
+	 * {@link Import#children()}.
+	 *
+	 * @return packages
+	 */
+	public Collection<Import> packageImports() {
+		List<Import> packages = new ArrayList<>();
+		for (Import i : imports) {
+			if (i.packageIndex.index == 0) packages.add(i);
+		}
+		return packages;
 	}
 
-	public Set<Export> rootExports() {
-		return Arrays.stream(exports)
-					 .filter(e -> e.groupName().equals(Name.NONE))
-					 .collect(Collectors.toSet());
+	/**
+	 * Find the top-level groups and objects which this package exports,
+	 * <p>
+	 * For exported groups, the individual elements exported from groups can be
+	 * inspected via {@link Export#children()}.
+	 *
+	 * @return groups, types and objects
+	 */
+	public Collection<Export> rootExports() {
+		List<Export> roots = new ArrayList<>();
+		for (Export e : exports) {
+			if (e.groupIndex.index == 0) roots.add(e);
+		}
+		return roots;
 	}
 
 	/**
