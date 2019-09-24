@@ -21,14 +21,14 @@ repositories {
 publishing {
     repositories {
         maven {
-            name = "GitHub"
-            url = "https://maven.pkg.github.com/${System.env.GH_USER}/${project.name}"
+            name = "ShrimpWorks"
+            url = 'https://code.shrimpworks.za.net/artefacts/'
             authentication {
                 basic(BasicAuthentication)
             }
             credentials(PasswordCredentials) {
-                username = "${System.env.GH_USER}"
-                password = "${System.env.GH_TOKEN}"
+                username = "${System.env.ARTEFACTS_USER}"
+                password = "${System.env.ARTEFACTS_PASSWORD}"
             }
         }
     }
