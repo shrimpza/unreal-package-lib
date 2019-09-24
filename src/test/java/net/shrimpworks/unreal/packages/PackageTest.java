@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Set;
+import java.util.Collection;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -136,7 +136,7 @@ public class PackageTest {
 	@Test
 	public void readImports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
-			Set<Import> imports = pkg.packageImports();
+			Collection<Import> imports = pkg.packageImports();
 			assertFalse(imports.isEmpty());
 			Import engine = imports.stream()
 								   .filter(i -> i.name.name.equals("Engine"))
@@ -152,7 +152,7 @@ public class PackageTest {
 	@Test
 	public void readExports() throws IOException {
 		try (Package pkg = new Package(unrMap)) {
-			Set<Export> local = pkg.rootExports();
+			Collection<Export> local = pkg.rootExports();
 			assertFalse(local.isEmpty());
 			Export levelInfo = local.stream()
 									.filter(e -> e.name.name.startsWith("LevelInfo"))
