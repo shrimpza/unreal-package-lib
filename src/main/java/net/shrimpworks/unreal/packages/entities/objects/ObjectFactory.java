@@ -20,6 +20,7 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
 public enum ObjectFactory {
 
 	Texture(Texture.class),
+	Sound(Sound.class),
 	Palette(Palette.class),
 	Model(Model.class),
 	Polys(Polys.class);

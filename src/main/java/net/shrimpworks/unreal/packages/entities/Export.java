@@ -88,7 +88,7 @@ public abstract class Export implements Named {
 
 	@Override
 	public String toString() {
-		return String.format("Export [index=%s, classIndex=%s, classSuperIndex=%s, groupIndex=%s, name=%s, flags=%s, size=%s, pos=%s]",
-							 index, classIndex, classSuperIndex, groupIndex, name, flags(), size, pos);
+		return String.format("%s [index=%s, classIndex=%s, classSuperIndex=%s, groupIndex=%s, name=%s, flags=%s, size=%s, pos=%s]",
+							 getClass().getSimpleName(), index, classIndex, classSuperIndex, groupIndex, name, flags(), size, pos);
 	}
 }
