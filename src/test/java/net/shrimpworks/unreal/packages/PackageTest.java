@@ -7,11 +7,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Collection;
+import java.util.List;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -32,6 +31,7 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -112,7 +112,6 @@ public class PackageTest {
 			} finally {
 				Files.deleteIfExists(tmpScreenshot);
 			}
-
 		}
 	}
 
@@ -170,8 +169,7 @@ public class PackageTest {
 		}
 	}
 
-
-	@Test
+	@Disabled
 	public void readPolys() throws IOException {
 		class BrushThing {
 
@@ -188,7 +186,8 @@ public class PackageTest {
 			}
 		}
 
-		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
+//		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
+		try (Package pkg = new Package(unrMap)) {
 			int minX = 0, maxX = 0;
 			int minY = 0, maxY = 0;
 
@@ -247,4 +246,5 @@ public class PackageTest {
 
 			ImageIO.write(bigImage, "png", new File("map.png"));
 		}
-	}}
+	}
+}
