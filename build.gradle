@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'net.shrimpworks'
-version = "1.4"
+version = "1.5"
 
 sourceCompatibility = '11'
 targetCompatibility = '11'

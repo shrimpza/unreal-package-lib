@@ -24,15 +24,15 @@ contained within these files.
 
 ## Current Implementation
 
-- Reading all a packages' exported objects and their properties.
-- Read and export textures from most supported formats.
 - Light-weight memory efficient implementation.
-- Use Umod package contents in combination with the package reader, to allow
-  inspecting and exporting objects without needing to extract the Umod 
+- Reading all a packages' exported objects and their properties.
+- Read and export textures from most supported UE1 and UE2 formats.
+- Read and export sounds in WAV format.
+- Use UMOD package contents in combination with the package reader, to allow
+  inspecting and exporting objects without needing to extract the UMOD
   contents. 
 - Extendable with more object readers if needed (meshes, sounds, etc).
-- Reading array properties on objects is not implemented.
-- There is currently no support for reading or extraction of data such as 
+- There is currently no support for reading or extraction of data such as
   UnrealScript classes.
 
 
@@ -59,12 +59,12 @@ Property shotProp = level.property("Screenshot");
 ExportedObject shotObject = pkg.objectByRef(((ObjectProperty)shotProp).value);
 Texture shot = (Texture)shotObject.object();
 
-// get and save the first mipmap (the full size texture) to file 
+// get and save the screenshot from the first mipmap (the full size texture) to file
 Texture.MipMap[] mipMaps = shot.mipMaps();
 ImageIO.write(mipMaps[0].get(), "png", Path.get("scheenshot.png").toFile());
 ```
 
-In this example, we unpack/extract the contents of a UMod file to dist:
+In this example, we unpack/extract the contents of a UMOD file to disk:
 
 ```java
 Path dest = Paths.get("/path/to/unpack/to"); 
@@ -115,7 +115,7 @@ private String filePath(String path) {
 
 ```
 
-For further usage examples, including reading of a umod packages contents in 
+For further usage examples, including reading of a UMOD packages contents in
 combination with the Package reader, refer to the unit tests.
 
 

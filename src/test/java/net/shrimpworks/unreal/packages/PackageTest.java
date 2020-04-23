@@ -18,6 +18,7 @@ import net.shrimpworks.unreal.packages.entities.objects.Model;
 import net.shrimpworks.unreal.packages.entities.objects.Object;
 import net.shrimpworks.unreal.packages.entities.objects.Polys;
 import net.shrimpworks.unreal.packages.entities.objects.Texture;
+import net.shrimpworks.unreal.packages.entities.properties.ArrayProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
@@ -67,6 +68,16 @@ public class PackageTest {
 			pkg.objectsByClassName("Polys").forEach(o -> {
 				assertTrue(o.object() instanceof Polys);
 			});
+		}
+	}
+
+	@Test
+	public void arrayProperties() throws IOException {
+		try (Package pkg = new Package(unrMap)) {
+			ExportedObject pathNode = pkg.objectsByClassName("DynamicAmbientSound").stream().findFirst().get();
+			Property sounds = pkg.object(pathNode).property("Sounds");
+			assertTrue(sounds instanceof ArrayProperty);
+			assertFalse(((ArrayProperty)sounds).values.isEmpty());
 		}
 	}
 

@@ -38,6 +38,7 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
 import net.shrimpworks.unreal.packages.entities.properties.PropertyType;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
 import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
+import net.shrimpworks.unreal.packages.entities.properties.UnknownArrayProperty;
 
 /**
  * An Unreal package.
@@ -472,13 +473,7 @@ public class Package implements Closeable {
 			header = null;
 		}
 
-		List<Property> properties = new ArrayList<>();
-		for (int i = 0; i < MAX_PROPERTIES; i++) {
-			Property p = readProperty();
-
-			if (p.name.equals(Name.NONE)) break;
-			else properties.add(p);
-		}
+		List<Property> properties = readProperties();
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
 		long propsLength = reader.currentPosition();
@@ -488,6 +483,35 @@ public class Package implements Closeable {
 		loadedObjects.put(export.pos, newObject);
 
 		return newObject;
+	}
+
+	private List<Property> readProperties() {
+		List<Property> properties = new ArrayList<>();
+		for (int i = 0; i < MAX_PROPERTIES; i++) {
+			Property p = readProperty();
+
+			if (p.name.equals(Name.NONE)) break;
+			else {
+				if (p instanceof ArrayProperty.ArrayItem && !properties.isEmpty()) {
+					/*
+					  Array handling:
+					  We should magically know that if this property is part of an array, the previous
+					  property is either an array we need to add to, or the previous property is
+					  actually the first item of the array. In the second case, we need to replace
+					  it with a new array property.
+					 */
+					Property lastProperty = properties.get(properties.size() - 1);
+					if (lastProperty instanceof ArrayProperty) {
+						properties.remove(lastProperty);
+						properties.add(((ArrayProperty)lastProperty).add((ArrayProperty.ArrayItem)p));
+					} else if (lastProperty.name.equals(p.name)) {
+						properties.remove(lastProperty);
+						properties.add(new ArrayProperty(((ArrayProperty.ArrayItem)p).property));
+					} else properties.add(((ArrayProperty.ArrayItem)p).property);
+				} else properties.add(p);
+			}
+		}
+		return properties;
 	}
 
 	/**
@@ -505,8 +529,8 @@ public class Package implements Closeable {
 		byte propInfo = reader.readByte();
 
 		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
-		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 is the size
-		boolean arrayFlag = (propInfo & 0x80) != 0; // bit 7 is either array size (??), or boolean value
+		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 are the size
+		boolean arrayFlag = (propInfo & 0b10000000) != 0; // bit 7 is either indicates an array, or if the value is a boolean
 
 		PropertyType propType = PropertyType.get(type);
 
@@ -551,7 +575,17 @@ public class Package implements Closeable {
 			arrayIndex = reader.readByte();
 		}
 
-		return createProperty(name, propType, structType, arrayIndex, size, arrayFlag);
+		Property property = createProperty(name, propType, structType, size, arrayFlag);
+
+		/*
+		   special case for array handling. array elements are just normal properties
+		   with the arrayFlag set and an array index.
+		 */
+		if (arrayFlag && propType != PropertyType.BooleanProperty) {
+			return new ArrayProperty.ArrayItem(property, arrayIndex);
+		}
+
+		return property;
 	}
 
 	/**
@@ -561,13 +595,12 @@ public class Package implements Closeable {
 	 * @param name       property name
 	 * @param type       type of property
 	 * @param structType if a struct property, the struct type
-	 * @param arrayIndex in an array property, the index of this property within an array
 	 * @param size       the byte length of the property
 	 * @param arrayFlag  the final bit of the property header, sometimes used to infer things
 	 * @return a new property
 	 */
 	private Property createProperty(
-			Name name, PropertyType type, StructProperty.StructType structType, int arrayIndex, int size, boolean arrayFlag) {
+			Name name, PropertyType type, StructProperty.StructType structType, int size, boolean arrayFlag) {
 
 		int startPos = reader.position();
 
@@ -618,7 +651,7 @@ public class Package implements Closeable {
 				case VectorProperty:
 					return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat());
 				case ArrayProperty:
-					return new ArrayProperty(this, name, new ObjectReference(this, reader.readIndex()));
+					return new UnknownArrayProperty(this, name, new ObjectReference(this, reader.readIndex()));
 				case FixedArrayProperty:
 					return new FixedArrayProperty(this, name, new ObjectReference(this, reader.readIndex()), reader.readIndex());
 				default:
@@ -627,7 +660,6 @@ public class Package implements Closeable {
 		} finally {
 			// if we didn't read all the property's bytes somehow, fast-forward to the end of the property...
 			// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes
-			// this also lets move past array payloads without consuming them yet in this version
 			if (reader.position() - startPos < size) {
 				reader.moveRelative(size - (reader.position() - startPos));
 			}

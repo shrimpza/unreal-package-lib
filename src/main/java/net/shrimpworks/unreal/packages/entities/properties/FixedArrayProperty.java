@@ -4,7 +4,7 @@ import net.shrimpworks.unreal.packages.Package;
 import net.shrimpworks.unreal.packages.entities.Name;
 import net.shrimpworks.unreal.packages.entities.ObjectReference;
 
-public class FixedArrayProperty extends ArrayProperty {
+public class FixedArrayProperty extends UnknownArrayProperty {
 
 	public final int count;
 
