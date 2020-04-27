@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,7 +32,6 @@ import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -112,6 +112,7 @@ public class PackageTest {
 			} finally {
 				Files.deleteIfExists(tmpScreenshot);
 			}
+
 		}
 	}
 
@@ -169,7 +170,7 @@ public class PackageTest {
 		}
 	}
 
-	@Disabled
+	@Test
 	public void readPolys() throws IOException {
 		class BrushThing {
 
@@ -177,17 +178,26 @@ public class PackageTest {
 			final Model model;
 			final Polys polys;
 			final StructProperty.VectorProperty location;
+			final Vector pivot;
+			final StructProperty.RotatorProperty rotation;
 
-			public BrushThing(Object brush, Model model, Polys polys, StructProperty.VectorProperty location) {
+			public BrushThing(
+					Object brush, Model model, Polys polys, StructProperty.VectorProperty location,
+					StructProperty.VectorProperty pivot,
+					StructProperty.RotatorProperty rotation) {
 				this.brush = brush;
 				this.model = model;
 				this.polys = polys;
 				this.location = location;
+				this.pivot = pivot == null
+						? new Vector(0, 0, 0)
+						: new Vector(pivot.x, pivot.y, pivot.z);
+				this.rotation = rotation;
 			}
 		}
 
-//		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
-		try (Package pkg = new Package(unrMap)) {
+//		try (Package pkg = new Package(unrMap)) {
+		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
 			int minX = 0, maxX = 0;
 			int minY = 0, maxY = 0;
 
@@ -196,13 +206,16 @@ public class PackageTest {
 				Object brushObj = brush.object();
 				Property modelProp = brushObj.property("Brush");
 				Property location = brushObj.property("Location");
+				Property pivot = brushObj.property("PrePivot");
+				Property rotation = brushObj.property("Rotation");
 				if (modelProp instanceof ObjectProperty && location instanceof StructProperty.VectorProperty) {
 					ExportedObject modelExp = pkg.objectByRef(((ObjectProperty)modelProp).value);
 					if (modelExp != null && modelExp.object() instanceof Model) {
 						Model model = (Model)modelExp.object();
 						ExportedObject polysExp = pkg.objectByRef(model.polys);
 						if (polysExp != null && polysExp.object() instanceof Polys) {
-							things.add(new BrushThing(brushObj, model, (Polys)polysExp.object(), (StructProperty.VectorProperty)location));
+							things.add(new BrushThing(brushObj, model, (Polys)polysExp.object(), (StructProperty.VectorProperty)location,
+													  (StructProperty.VectorProperty)pivot, (StructProperty.RotatorProperty)rotation));
 						}
 					}
 				}
@@ -227,24 +240,95 @@ public class PackageTest {
 			// https://www.gamefromscratch.com/post/2012/11/24/GameDev-math-recipes-Rotating-one-point-around-another-point.aspx
 			// https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d
 
+			// 360 == 32786
+
 			for (BrushThing thing : things) {
 				for (Polygon p : thing.polys.polys) {
 					int[] pointsX = new int[p.vertices.size() + 1];
 					int[] pointsY = new int[p.vertices.size() + 1];
 					for (int i = 0; i < p.vertices.size(); i++) {
 						Vector vertex = p.vertices.get(i);
-						pointsX[i] = (int)(vertex.x - minX + thing.location.x);
-						pointsY[i] = (int)(vertex.y - minY + thing.location.y);
+
+						Vector v = thing.rotation != null
+								? translate(vertex, thing.location, thing.pivot, thing.rotation)
+								: vertex;
+
+						pointsX[i] = (int)(v.x - minX + thing.location.x - thing.pivot.x);
+						pointsY[i] = (int)(v.y - minY + thing.location.y - thing.pivot.y);
 					}
-					pointsX[pointsX.length - 1] = (int)(thing.location.x + p.vertices.get(0).x - minX);
-					pointsY[pointsY.length - 1] = (int)(thing.location.y + p.vertices.get(0).y - minY);
+//					pointsX[pointsX.length - 1] = (int)(thing.location.x + p.vertices.get(0).x - minX);
+//					pointsY[pointsY.length - 1] = (int)(thing.location.y + p.vertices.get(0).y - minY);
 					graphics.drawPolygon(pointsX, pointsY, p.vertices.size());
 				}
-				graphics.drawString(thing.brush.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY);
-				graphics.drawString(thing.model.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY + 15);
+//				graphics.drawString(thing.brush.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY);
+//				graphics.drawString(thing.model.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY + 15);
+				if (thing.pivot != null && thing.brush.export.name.name.equalsIgnoreCase("brush234")) {
+					graphics.setColor(Color.RED);
+					graphics.drawOval((int)(thing.location.x  - minX),
+									  (int)(thing.location.y  - minY),
+									  4, 4);
+					graphics.setColor(Color.BLACK);
+				}
 			}
 
 			ImageIO.write(bigImage, "png", new File("map.png"));
 		}
+	}
+
+	private Vector translate(Vector point, StructProperty.VectorProperty location, Vector pivot, StructProperty.RotatorProperty rotation) {
+		/*
+		   TODO since these are actually objects in 3D space, we cannot discard the roll and pitch, as they also
+		        impact the final raw rotation angle. simply rotating around the yaw axis is not sufficient.
+		 */
+//		double x = point.x;
+//		double y = point.y;
+//		double z = point.z;
+
+		double roll = (((double)rotation.roll / 65535d) * 360d) * (Math.PI / 180);
+		double pitch = (((double)rotation.pitch / 65535d) * 360d) * (Math.PI / 180);
+		double yaw = (((double)rotation.yaw / (65535d)) * 360d) * (Math.PI / 180); // Convert to radians
+
+		double globalX = location.x;
+		double globalY = location.y;
+		double globalZ = location.z;
+
+		double x = point.x;
+		double y = point.y;
+		double z = point.z;
+
+		// yaw
+		double newX = (Math.cos(yaw) * (x)) - (Math.sin(yaw) * (y));
+		y = (Math.sin(yaw) * (x)) + (Math.cos(yaw) * (y));
+		x = newX;
+
+		// pitch
+		newX = ((x - pivot.x) * Math.cos(pitch)) + (Math.sin(pitch) * (z - pivot.z)) + pivot.x;
+		z = (Math.sin(pitch) * (x - pivot.x)) + (Math.cos(pitch) * (z - pivot.z)) + pivot.z;
+		x = newX;
+//
+//		// roll
+		double newY = (Math.cos(roll) * (y - pivot.y)) - (Math.sin(roll) * (z - pivot.z)) + pivot.y;
+		z = (Math.sin(roll) * (y - pivot.y)) + (Math.cos(roll) * (z - pivot.z)) + pivot.z;
+		y = newY;
+
+		return new Vector((float)x, (float)y, (float)z);
+
+		// pitch
+//		double pitchedY = Math.cos(pitch) * (point.y - pivot.y) - Math.sin(pitch) * (point.z - pivot.z) + pivot.y;
+//		double pitchedZ = Math.sin(pitch) * (point.y - pivot.y) + Math.cos(pitch) * (point.z - pivot.z) + pivot.z;
+//
+//		// roll
+//		double rolledX = Math.cos(roll) * (point.x - pivot.x) - Math.sin(roll) * (point.z - pivot.z) + pivot.x;
+//		double rolledZ = Math.sin(roll) * (point.x - pivot.x) + Math.cos(roll) * (point.z - pivot.z) + pivot.z;
+//
+//		// yaw
+//		double x = Math.cos(yaw) * (rolledX - pivot.x) - Math.sin(yaw) * (pitchedY - pivot.y) + pivot.x;
+//		double y = Math.sin(yaw) * (rolledX - pivot.x) + Math.cos(yaw) * (pitchedY - pivot.y) + pivot.y;
+//
+//		return new Vector((float)x, (float)y, point.z);
+
+//		double rotatedX = Math.cos(yaw) * (point.x - pivot.x) - Math.sin(yaw) * (point.y - pivot.y) + pivot.x;
+//		double rotatedY = Math.sin(yaw) * (point.x - pivot.x) + Math.cos(yaw) * (point.y - pivot.y) + pivot.y;
+//		return new Vector((float)rotatedX, (float)rotatedY, point.z);
 	}
 }
