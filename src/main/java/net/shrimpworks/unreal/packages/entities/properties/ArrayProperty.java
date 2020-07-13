@@ -15,7 +15,7 @@ public class ArrayProperty extends Property {
 		this(initialValue.pkg, initialValue.name, List.of(initialValue));
 	}
 
-	public ArrayProperty(Package pkg, Name name, List<Property> values) {
+	public ArrayProperty(Package pkg, Name name, List<? extends Property> values) {
 		super(pkg, name);
 		this.values = Collections.unmodifiableList(values);
 	}

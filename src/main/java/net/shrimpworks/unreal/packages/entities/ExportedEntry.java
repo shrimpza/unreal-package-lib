@@ -10,9 +10,9 @@ import net.shrimpworks.unreal.packages.Package;
 public class ExportedEntry extends Export {
 
 	public ExportedEntry(
-			Package pkg, int index, ObjectReference objClass, ObjectReference objSuper, ObjectReference objGroup, Name name, int flags,
-			int size, int pos) {
-		super(pkg, index, objClass, objSuper, objGroup, name, flags, size, pos);
+			Package pkg, int index, ObjectReference classIndex, ObjectReference superClassIndex, ObjectReference groupIndex, Name name,
+			long flags, int size, int pos) {
+		super(pkg, index, classIndex, superClassIndex, groupIndex, name, flags, size, pos);
 	}
 
 	public ExportedObject asObject() {

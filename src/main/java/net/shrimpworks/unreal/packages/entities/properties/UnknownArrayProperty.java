@@ -2,7 +2,6 @@ package net.shrimpworks.unreal.packages.entities.properties;
 
 import net.shrimpworks.unreal.packages.Package;
 import net.shrimpworks.unreal.packages.entities.Name;
-import net.shrimpworks.unreal.packages.entities.ObjectReference;
 
 /**
  * This is a property type defined by {@link PropertyType#ArrayProperty},
@@ -15,15 +14,15 @@ import net.shrimpworks.unreal.packages.entities.ObjectReference;
  */
 public class UnknownArrayProperty extends Property {
 
-	public final ObjectReference arrayType;
+	public final int count;
 
-	public UnknownArrayProperty(Package pkg, Name name, ObjectReference arrayType) {
+	public UnknownArrayProperty(Package pkg, Name name, int count) {
 		super(pkg, name);
-		this.arrayType = arrayType;
+		this.count = count;
 	}
 
 	@Override
 	public String toString() {
-		return String.format("ArrayProperty [name=%s, arrayType=%s]", name, arrayType);
+		return String.format("ArrayProperty [name=%s, count=%d]", name, count);
 	}
 }

@@ -6,9 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.Arrays;
 
 /**
  * An Unreal modification package.
@@ -28,7 +26,6 @@ import java.util.Optional;
 public class Umod implements Closeable {
 
 	private static final int UMOD_SIGNATURE = 0x9FE3C5A3;
-	private static final UmodFile[] UMOD_ARRAY = new UmodFile[0];
 
 	private static final String SHA1 = "SHA-1";
 
@@ -56,32 +53,25 @@ public class Umod implements Closeable {
 
 		this.size = reader.readInt(); // this is actually just the filesize; perhaps useful for validation
 		this.version = reader.readInt();
+		reader.version = version; // not strictly accurate, since this version is "1", but we only need it from `readIndex`
 
 		final long checksum = reader.readInt(); // cool story bro
 
 		// read the files directory/table
-		List<UmodFile> files = new ArrayList<>();
 		reader.moveTo(filesOffset);
 
-		// keep track of manifest files
-		final UmodFile[] manifests = new UmodFile[2];
-
-		// read number of entries within the
-		int entries = reader.readIndex();
+		// read number of entries within the file
+		int fileCount = reader.readIndex();
+		this.files = new UmodFile[fileCount];
 
 		// keep reading until we get back to the header
-		for (int i = 0; i < entries; i++) {
+		for (int i = 0; i < fileCount; i++) {
 			reader.ensureRemaining(270); // enough to read a full file path and the other bytes
 			UmodFile file = readFile();
-			files.add(file);
-
-			if (file.name.toLowerCase().endsWith("manifest.ini")) manifests[0] = file;
-			else if (file.name.toLowerCase().endsWith("manifest.int")) manifests[1] = file;
+			files[i] = file;
 		}
 
-		this.files = files.toArray(UMOD_ARRAY);
-
-		this.manifestIni = Optional.of(manifests[0]).map(u -> {
+		this.manifestIni = Arrays.stream(files).filter(f -> f.name.toLowerCase().endsWith("manifest.ini")).findFirst().map(u -> {
 			try {
 				return new IntFile(u.read());
 			} catch (IOException e) {
@@ -89,7 +79,7 @@ public class Umod implements Closeable {
 			}
 		}).orElse(null);
 
-		this.manifestInt = Optional.of(manifests[1]).map(u -> {
+		this.manifestInt = Arrays.stream(files).filter(f -> f.name.toLowerCase().endsWith("manifest.int")).findFirst().map(u -> {
 			try {
 				return new IntFile(u.read());
 			} catch (IOException e) {

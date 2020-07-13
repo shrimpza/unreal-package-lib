@@ -40,13 +40,13 @@ public enum ObjectFlag {
 	DebugSerialize(0x40000000),
 	DebugDestroy(0x80000000);
 
-	private final int flag;
+	private final long flag;
 
-	ObjectFlag(int flag) {
+	ObjectFlag(long flag) {
 		this.flag = flag;
 	}
 
-	public static Set<ObjectFlag> fromFlags(int flags) {
+	public static Set<ObjectFlag> fromFlags(long flags) {
 		Set<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
 		objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
 		return objectFlags;

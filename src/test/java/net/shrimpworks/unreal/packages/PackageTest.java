@@ -5,8 +5,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -25,6 +29,7 @@ import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -78,6 +83,39 @@ public class PackageTest {
 			Property sounds = pkg.object(pathNode).property("Sounds");
 			assertTrue(sounds instanceof ArrayProperty);
 			assertFalse(((ArrayProperty)sounds).values.isEmpty());
+		}
+	}
+
+	@Test
+	@Disabled
+	public void meh() throws IOException {
+		try (PackageReader reader = new PackageReader(Paths.get("/home/shrimp/tmp/DM-MCC-Morbias.ut3"), true);
+			 Package pkg = new Package(reader)) {
+			assertNotNull(pkg.sha1Hash());
+
+			Arrays.stream(pkg.objects)
+				  .filter(Objects::nonNull)
+				  .sorted(Comparator.comparing(e -> e.name.name))
+				  .forEach(e -> {
+					  try {
+//						  System.out.printf("%s :: %s%n", e.classIndex.get().name().name, e.name.name);
+						  for (Property property : e.object().properties) {
+//							  System.out.printf("  - %s :: %s%n", property.getClass().getSimpleName(), property.name.name);
+						  }
+					  } catch (Throwable ex) {
+						  // skip
+					  }
+				  });
+
+//			ExportedObject o = pkg.objectByName(new Name("MorbiasScreenshot"));
+//			ExportedObject o = pkg.objectByName(new Name("Preview"));
+//			ExportedObject o = pkg.objectsByClassName("UTMapInfo").iterator().next();
+//			System.out.printf("%s :: %s%n", o.classIndex.get().name().name, o.name.name);
+//			for (Property property : o.object().properties) {
+//				System.out.println(property.getClass().getSimpleName() + ": " + property.toString());
+//			}
+
+			System.out.println(reader.stats);
 		}
 	}
 
