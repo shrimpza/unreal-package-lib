@@ -12,6 +12,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -25,15 +26,16 @@ import net.shrimpworks.unreal.packages.entities.objects.Polys;
 import net.shrimpworks.unreal.packages.entities.objects.Texture;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Polygon;
 import net.shrimpworks.unreal.packages.entities.objects.geometry.Vector;
+import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 import net.shrimpworks.unreal.packages.entities.properties.StringProperty;
-import net.shrimpworks.unreal.packages.entities.properties.StructProperty;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static net.shrimpworks.unreal.packages.entities.properties.StructProperty.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PackageTest {
@@ -177,17 +179,23 @@ public class PackageTest {
 			final Object brush;
 			final Model model;
 			final Polys polys;
-			final StructProperty.VectorProperty location;
+			final ScaleProperty mainScale;
+			final ScaleProperty postScale;
+			final VectorProperty location;
 			final Vector pivot;
-			final StructProperty.RotatorProperty rotation;
+			final RotatorProperty rotation;
 
 			public BrushThing(
-					Object brush, Model model, Polys polys, StructProperty.VectorProperty location,
-					StructProperty.VectorProperty pivot,
-					StructProperty.RotatorProperty rotation) {
+					Object brush, Model model, Polys polys,
+					ScaleProperty mainScale, ScaleProperty postScale,
+					VectorProperty location,
+					VectorProperty pivot,
+					RotatorProperty rotation) {
 				this.brush = brush;
 				this.model = model;
 				this.polys = polys;
+				this.mainScale = mainScale;
+				this.postScale = postScale;
 				this.location = location;
 				this.pivot = pivot == null
 						? new Vector(0, 0, 0)
@@ -197,35 +205,62 @@ public class PackageTest {
 		}
 
 //		try (Package pkg = new Package(unrMap)) {
-		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
+//		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/DM-Morbias][.unr"))) {
+		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/monsterhunt/Maps/MH-Trials.unr"))) {
+//		try (Package pkg = new Package(Paths.get("/home/shrimp/tmp/Rotations.unr"))) {
 			int minX = 0, maxX = 0;
 			int minY = 0, maxY = 0;
 
-			List<BrushThing> things = new ArrayList<>();
+			final ScaleProperty defaultScale = new ScaleProperty(pkg, new Name("PostScale"), 1f, 1f, 1f, 0f,
+																 (byte)5);
+			final RotatorProperty defaultRot = new RotatorProperty(pkg, new Name("Rotation"), 0, 0, 0);
+			final VectorProperty defaultLoc = new VectorProperty(pkg, new Name("Location"), 0f, 0f, 0f);
+
+			final Set<Byte> csgOps = Set.of((byte)1, (byte)2);
+
+			List<BrushThing> brushes = new ArrayList<>();
 			for (ExportedObject brush : pkg.objectsByClassName("Brush")) {
 				Object brushObj = brush.object();
+
+				Property region = brushObj.property("Region");
+				if (region instanceof PointRegionProperty && ((PointRegionProperty)region).zone.get(true).name().name.contains("SkyZone")) {
+					continue;
+				}
+				if (brushObj.property("CsgOper") == null || !csgOps.contains(((ByteProperty)brushObj.property("CsgOper")).value)) continue;
+
 				Property modelProp = brushObj.property("Brush");
 				Property location = brushObj.property("Location");
 				Property pivot = brushObj.property("PrePivot");
 				Property rotation = brushObj.property("Rotation");
-				if (modelProp instanceof ObjectProperty && location instanceof StructProperty.VectorProperty) {
+				Property postScale = brushObj.property("PostScale");
+				Property mainScale = brushObj.property("MainScale");
+				if (location == null) location = defaultLoc;
+				if (postScale == null) postScale = defaultScale;
+				if (mainScale == null) mainScale = defaultScale;
+				if (rotation == null) rotation = defaultRot;
+				if (modelProp instanceof ObjectProperty) {
 					ExportedObject modelExp = pkg.objectByRef(((ObjectProperty)modelProp).value);
 					if (modelExp != null && modelExp.object() instanceof Model) {
 						Model model = (Model)modelExp.object();
 						ExportedObject polysExp = pkg.objectByRef(model.polys);
 						if (polysExp != null && polysExp.object() instanceof Polys) {
-							things.add(new BrushThing(brushObj, model, (Polys)polysExp.object(), (StructProperty.VectorProperty)location,
-													  (StructProperty.VectorProperty)pivot, (StructProperty.RotatorProperty)rotation));
+							if (((Polys)polysExp.object()).polys.size() == 1) continue;
+							brushes.add(new BrushThing(brushObj, model, (Polys)polysExp.object(),
+													   (ScaleProperty)mainScale,
+													   (ScaleProperty)postScale,
+													   (VectorProperty)location,
+													   (VectorProperty)pivot,
+													   (RotatorProperty)rotation));
 						}
 					}
 				}
 			}
 
-			for (BrushThing thing : things) {
-				minX = Math.min(minX, (int)thing.location.x);
-				maxX = Math.max(maxX, (int)thing.location.x);
-				minY = Math.min(minY, (int)thing.location.y);
-				maxY = Math.max(maxY, (int)thing.location.y);
+			for (BrushThing brush : brushes) {
+				minX = Math.min(minX, (int)brush.location.x - 300);
+				maxX = Math.max(maxX, (int)brush.location.x + 300);
+				minY = Math.min(minY, (int)brush.location.y - 300);
+				maxY = Math.max(maxY, (int)brush.location.y + 300);
 			}
 
 			BufferedImage bigImage = new BufferedImage(maxX - minX, maxY - minY, BufferedImage.TYPE_INT_RGB);
@@ -242,19 +277,21 @@ public class PackageTest {
 
 			// 360 == 32786
 
-			for (BrushThing thing : things) {
-				for (Polygon p : thing.polys.polys) {
+			for (BrushThing brush : brushes) {
+				if (brush.brush.export.name.name.equalsIgnoreCase("brush234")) {
+					System.out.println("hi");
+				}
+
+				for (Polygon p : brush.polys.polys) {
 					int[] pointsX = new int[p.vertices.size() + 1];
 					int[] pointsY = new int[p.vertices.size() + 1];
 					for (int i = 0; i < p.vertices.size(); i++) {
 						Vector vertex = p.vertices.get(i);
 
-						Vector v = thing.rotation != null
-								? translate(vertex, thing.location, thing.pivot, thing.rotation)
-								: vertex;
+						Vector v = translate2(vertex, brush.mainScale, brush.postScale, brush.pivot, brush.rotation);
 
-						pointsX[i] = (int)(v.x - minX + thing.location.x - thing.pivot.x);
-						pointsY[i] = (int)(v.y - minY + thing.location.y - thing.pivot.y);
+						pointsX[i] = (int)(v.x - minX + brush.location.x - brush.pivot.x);
+						pointsY[i] = (int)(v.y - minY + brush.location.y - brush.pivot.y);
 					}
 //					pointsX[pointsX.length - 1] = (int)(thing.location.x + p.vertices.get(0).x - minX);
 //					pointsY[pointsY.length - 1] = (int)(thing.location.y + p.vertices.get(0).y - minY);
@@ -262,11 +299,11 @@ public class PackageTest {
 				}
 //				graphics.drawString(thing.brush.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY);
 //				graphics.drawString(thing.model.export.name.name, (int)thing.location.x - minX, (int)thing.location.y - minY + 15);
-				if (thing.pivot != null && thing.brush.export.name.name.equalsIgnoreCase("brush234")) {
+				if (brush.pivot != null && brush.brush.export.name.name.equalsIgnoreCase("brush234")) {
 					graphics.setColor(Color.RED);
-					graphics.drawOval((int)(thing.location.x  - minX),
-									  (int)(thing.location.y  - minY),
-									  4, 4);
+					graphics.drawOval((int)(brush.location.x - minX),
+									  (int)(brush.location.y - minY),
+									  8, 8);
 					graphics.setColor(Color.BLACK);
 				}
 			}
@@ -275,22 +312,10 @@ public class PackageTest {
 		}
 	}
 
-	private Vector translate(Vector point, StructProperty.VectorProperty location, Vector pivot, StructProperty.RotatorProperty rotation) {
-		/*
-		   TODO since these are actually objects in 3D space, we cannot discard the roll and pitch, as they also
-		        impact the final raw rotation angle. simply rotating around the yaw axis is not sufficient.
-		 */
-//		double x = point.x;
-//		double y = point.y;
-//		double z = point.z;
-
-		double roll = (((double)rotation.roll / 65535d) * 360d) * (Math.PI / 180);
-		double pitch = (((double)rotation.pitch / 65535d) * 360d) * (Math.PI / 180);
-		double yaw = (((double)rotation.yaw / (65535d)) * 360d) * (Math.PI / 180); // Convert to radians
-
-		double globalX = location.x;
-		double globalY = location.y;
-		double globalZ = location.z;
+	private Vector translate(Vector point, ScaleProperty postScale, Vector pivot, RotatorProperty rotation) {
+		double roll = (((double)rotation.roll / 65536d) * 360d) * (Math.PI / 180);
+		double pitch = (((double)rotation.pitch / 65536d) * 360d) * (Math.PI / 180);
+		double yaw = (((double)rotation.yaw / (65536d)) * 360d) * (Math.PI / 180); // Convert to radians
 
 		double x = point.x;
 		double y = point.y;
@@ -305,30 +330,39 @@ public class PackageTest {
 		newX = ((x - pivot.x) * Math.cos(pitch)) + (Math.sin(pitch) * (z - pivot.z)) + pivot.x;
 		z = (Math.sin(pitch) * (x - pivot.x)) + (Math.cos(pitch) * (z - pivot.z)) + pivot.z;
 		x = newX;
-//
+
 //		// roll
 		double newY = (Math.cos(roll) * (y - pivot.y)) - (Math.sin(roll) * (z - pivot.z)) + pivot.y;
 		z = (Math.sin(roll) * (y - pivot.y)) + (Math.cos(roll) * (z - pivot.z)) + pivot.z;
 		y = newY;
 
-		return new Vector((float)x, (float)y, (float)z);
+		return new Vector((float)x * postScale.x, (float)y * postScale.y, (float)z * postScale.z);
+	}
+
+	private Vector translate2(Vector point, ScaleProperty mainScale, ScaleProperty postScale, Vector pivot, RotatorProperty rotation) {
+		double roll = (((double)rotation.roll / 65536d) * 360d) * (Math.PI / 180);
+		double pitch = (((double)rotation.pitch / 65536d) * 360d) * (Math.PI / 180);
+		double yaw = (((double)rotation.yaw / 65536d) * 360d) * (Math.PI / 180); // Convert to radians
+
+		double x = point.x * mainScale.x;
+		double y = point.y * mainScale.y;
+		double z = point.z * mainScale.z;
+
+		double[] v = { x, y, z };
 
 		// pitch
-//		double pitchedY = Math.cos(pitch) * (point.y - pivot.y) - Math.sin(pitch) * (point.z - pivot.z) + pivot.y;
-//		double pitchedZ = Math.sin(pitch) * (point.y - pivot.y) + Math.cos(pitch) * (point.z - pivot.z) + pivot.z;
-//
-//		// roll
-//		double rolledX = Math.cos(roll) * (point.x - pivot.x) - Math.sin(roll) * (point.z - pivot.z) + pivot.x;
-//		double rolledZ = Math.sin(roll) * (point.x - pivot.x) + Math.cos(roll) * (point.z - pivot.z) + pivot.z;
-//
-//		// yaw
-//		double x = Math.cos(yaw) * (rolledX - pivot.x) - Math.sin(yaw) * (pitchedY - pivot.y) + pivot.x;
-//		double y = Math.sin(yaw) * (rolledX - pivot.x) + Math.cos(yaw) * (pitchedY - pivot.y) + pivot.y;
-//
-//		return new Vector((float)x, (float)y, point.z);
+		x = v[0]; z = v[2];
+		v[0] = ((x - pivot.x) * Math.cos(pitch) + (z - pivot.z) * Math.sin(pitch)) + pivot.x;
+		v[2] = ((z - pivot.z) * Math.cos(pitch) - (x - pivot.x) * Math.sin(pitch)) + pivot.z;
+		// roll
+		y = v[1]; z = v[2];
+		v[1] = ((y - pivot.y) * Math.cos(roll) - (z - pivot.z) * Math.sin(roll)) + pivot.y;
+		v[2] = ((z - pivot.z) * Math.cos(roll) + (y - pivot.y) * Math.sin(roll)) + pivot.z;
+		// yaw
+		x = v[0]; y = v[1];
+		v[0] = ((x - pivot.x) * Math.cos(yaw) - (y - pivot.y) * Math.sin(yaw)) + pivot.x;
+		v[1] = ((y - pivot.y) * Math.cos(yaw) + (x - pivot.x) * Math.sin(yaw)) + pivot.y;
 
-//		double rotatedX = Math.cos(yaw) * (point.x - pivot.x) - Math.sin(yaw) * (point.y - pivot.y) + pivot.x;
-//		double rotatedY = Math.sin(yaw) * (point.x - pivot.x) + Math.cos(yaw) * (point.y - pivot.y) + pivot.y;
-//		return new Vector((float)rotatedX, (float)rotatedY, point.z);
+		return new Vector((float)v[0] * postScale.x, (float)v[1] * postScale.y, (float)v[2] * postScale.z);
 	}
 }
