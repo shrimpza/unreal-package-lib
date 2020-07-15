@@ -7,10 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
@@ -89,31 +86,52 @@ public class PackageTest {
 	@Test
 	@Disabled
 	public void meh() throws IOException {
-		try (PackageReader reader = new PackageReader(Paths.get("/home/shrimp/tmp/DM-MCC-Morbias.ut3"), true);
+		try (PackageReader reader = new PackageReader(Paths.get("/home/shrimp/tmp/DM-MCC-Morbias.ut3"), false);
 			 Package pkg = new Package(reader)) {
 			assertNotNull(pkg.sha1Hash());
 
-			Arrays.stream(pkg.objects)
-				  .filter(Objects::nonNull)
-				  .sorted(Comparator.comparing(e -> e.name.name))
-				  .forEach(e -> {
-					  try {
-//						  System.out.printf("%s :: %s%n", e.classIndex.get().name().name, e.name.name);
-						  for (Property property : e.object().properties) {
-//							  System.out.printf("  - %s :: %s%n", property.getClass().getSimpleName(), property.name.name);
-						  }
-					  } catch (Throwable ex) {
-						  // skip
-					  }
-				  });
+//			Arrays.stream(pkg.objects)
+//				  .filter(Objects::nonNull)
+//				  .sorted(Comparator.comparing(e -> e.name.name))
+//				  .forEach(e -> {
+//					  try {
+////						  System.out.printf("%s :: %s%n", e.classIndex.get().name().name, e.name.name);
+//						  for (Property property : e.object().properties) {
+////							  System.out.printf("  - %s :: %s%n", property.getClass().getSimpleName(), property.name.name);
+//						  }
+//					  } catch (Throwable ex) {
+//						  // skip
+//					  }
+//				  });
 
-//			ExportedObject o = pkg.objectByName(new Name("MorbiasScreenshot"));
-//			ExportedObject o = pkg.objectByName(new Name("Preview"));
-//			ExportedObject o = pkg.objectsByClassName("UTMapInfo").iterator().next();
-//			System.out.printf("%s :: %s%n", o.classIndex.get().name().name, o.name.name);
-//			for (Property property : o.object().properties) {
-//				System.out.println(property.getClass().getSimpleName() + ": " + property.toString());
-//			}
+//			ExportedObject o = pkg.objectByName(new Name("Texture2D"));
+//			pkg.objectsByClassName("Texture2D").forEach(o -> {
+//				System.out.printf("%s :: %s%n", o.classIndex.get().name().name, o.name.name);
+//				for (Property property : o.object().properties) {
+//					System.out.println(property.getClass().getSimpleName() + ": " + property.toString());
+//				}
+//			});
+
+			ExportedObject o = pkg.objectByName(new Name("MorbiasScreenshot"));
+			System.out.printf("%s :: %s%n", o.classIndex.get().name().name, o.name.name);
+			Object obj = o.object();
+			for (Property property : obj.properties) {
+				System.out.println(property.getClass().getSimpleName() + ": " + property.toString());
+			}
+			assertTrue(obj instanceof Texture);
+
+			Path tmpScreenshot = Files.createTempFile("test-ss-", ".png");
+
+			try {
+				Texture.MipMap[] mipMaps = ((Texture)obj).mipMaps();
+				BufferedImage bufferedImage = mipMaps[0].get();
+				ImageIO.write(bufferedImage, "png", tmpScreenshot.toFile());
+
+				// attempt to load the saved screenshot, should work if it was written correctly
+				assertNotNull(ImageIO.read(tmpScreenshot.toFile()));
+			} finally {
+				Files.deleteIfExists(tmpScreenshot);
+			}
 
 			System.out.println(reader.stats);
 		}

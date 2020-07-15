@@ -107,7 +107,7 @@ public class Package implements Closeable {
 	 * <li><= 68 Unreal</li>
 	 * <li>>= 69 Unreal Tournament</li>
 	 * <li>>= 117(?) UE2 (UT2003/4)</li>
-	 * <li>>= 249 UE3</li>
+	 * <li>>= 178 UE3</li>
 	 * <li>>= 512 UE3 (UT3)</li>
 	 * </ul>
 	 */
@@ -550,9 +550,9 @@ public class Package implements Closeable {
 	}
 
 	/**
-	 * Read a single export from the current buffer position.
+	 * Read a single import from the current buffer position.
 	 *
-	 * @return a new export
+	 * @return a new import
 	 */
 	private Import readImport(int index) {
 		Name classPackage = name(reader.readNameIndex());
@@ -588,7 +588,6 @@ public class Package implements Closeable {
 		if (export.classIndex.index == 0) return null;
 
 		reader.moveTo(export.pos);
-
 		ObjectHeader header = null;
 
 		if (version >= 322) {
@@ -606,9 +605,8 @@ public class Package implements Closeable {
 		List<Property> properties = readProperties();
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = reader.currentPosition();
-
-		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, (int)propsLength);
+		int postPropsPosition = reader.currentPosition();
+		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, postPropsPosition);
 
 		loadedObjects.put(export.pos, newObject);
 

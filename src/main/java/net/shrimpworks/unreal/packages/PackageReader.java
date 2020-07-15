@@ -145,7 +145,11 @@ public class PackageReader implements Closeable {
 	 */
 	public int currentPosition() {
 		try {
-			return (int)(channel.position() - buffer.remaining());
+			if (channel instanceof ChunkChannel) {
+				return ((ChunkChannel)channel).chunk.uncompressedOffset + (int)(channel.position() - buffer.remaining());
+			} else {
+				return (int)(channel.position() - buffer.remaining());
+			}
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not determine current file position");
 		}

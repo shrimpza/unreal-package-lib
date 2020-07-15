@@ -16,23 +16,37 @@ import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT1Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT3Decompressor;
 import net.shrimpworks.unreal.packages.entities.objects.dxt.DXT5Decompressor;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
+import net.shrimpworks.unreal.packages.entities.properties.EnumProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ObjectProperty;
 import net.shrimpworks.unreal.packages.entities.properties.Property;
 
 public class Texture extends Object {
 
 	public enum Format {
-		PALETTE_8_BIT,
-		RGBA7,
-		RGB16,
-		DXT1,
-		RBG8,
-		RGBA8,
-		UNKNOWN, // dunno what this might be
-		DXT3,
-		DXT5,
-		L8,
-		G16
+		PALETTE_8_BIT("PF_Unsupported"),
+		RGBA7("PF_Unsupported"),
+		RGB16("PF_Unsupported"),
+		DXT1("PF_DXT1"),
+		RBG8("PF_G8"),
+		RGBA8("PF_R8G8B8A8"),
+		UNKNOWN("PF_Unknown"), // dunno what this might be
+		DXT3("PF_DXT3"),
+		DXT5("PF_DXT5"),
+		L8("PF_L8"),
+		G16("PF_G16");
+
+		private final String ue3Name;
+
+		Format(String ue3Name) {
+			this.ue3Name = ue3Name;
+		}
+
+		public static Format forFormatName(String name) {
+			for (Format value : values()) {
+				if (value.ue3Name.equalsIgnoreCase(name)) return value;
+			}
+			return UNKNOWN;
+		}
 	}
 
 	public Texture(Package pkg, PackageReader reader, Export export, ObjectHeader header, Collection<Property> properties, int dataStart) {
@@ -42,7 +56,7 @@ public class Texture extends Object {
 	public MipMap[] mipMaps() {
 		reader.moveTo(dataStart);
 
-		int mipCount = reader.readByte();
+		int mipCount = pkg.version >= 178 ? reader.readInt() : reader.readByte();
 
 		MipMap[] mips = new MipMap[mipCount];
 
@@ -79,6 +93,8 @@ public class Texture extends Object {
 		Property prop = property("Format");
 		if (prop instanceof ByteProperty) {
 			return Format.values()[((ByteProperty)prop).value];
+		} else if (prop instanceof EnumProperty) {
+			return Format.forFormatName(((EnumProperty)prop).value.name);
 		}
 
 		return Format.PALETTE_8_BIT;
@@ -110,7 +126,7 @@ public class Texture extends Object {
 		return data;
 	}
 
-	public class MipMap {
+	public static class MipMap {
 
 		private final Texture texture;
 		private final int widthOffset;
