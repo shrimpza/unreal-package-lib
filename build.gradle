@@ -1,66 +1,65 @@
 plugins {
-    id 'java-library'
-    id 'maven-publish'
-    id 'jacoco'
+	id 'java-library'
+	id 'maven-publish'
+	id 'jacoco'
 }
 
 group = 'net.shrimpworks'
 version = "1.6"
 
 compileJava {
-    options.release = 11
+	options.release = 11
 }
 
 if (System.getenv().containsKey("DRONE_BUILD_NUMBER")) {
-    version = "${version}.${System.env.DRONE_BUILD_NUMBER}"
+	version = "${version}.${System.env.DRONE_BUILD_NUMBER}"
 }
 
 repositories {
-    mavenCentral()
+	mavenCentral()
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "ShrimpWorks"
-            url = 'https://code.shrimpworks.za.net/artefacts/'
-            authentication {
-                basic(BasicAuthentication)
-            }
-            credentials(PasswordCredentials) {
-                username = "${System.env.ARTEFACTS_USER}"
-                password = "${System.env.ARTEFACTS_PASSWORD}"
-            }
-        }
-    }
-    publications {
-        maven(MavenPublication) {
-            from components.java
-        }
-    }
+	repositories {
+		maven {
+			name = "ShrimpWorks"
+			url = 'https://code.shrimpworks.za.net/artefacts/'
+			authentication {
+				basic(BasicAuthentication)
+			}
+			credentials(PasswordCredentials) {
+				username = "${System.env.ARTEFACTS_USER}"
+				password = "${System.env.ARTEFACTS_PASSWORD}"
+			}
+		}
+	}
+	publications {
+		maven(MavenPublication) {
+			from components.java
+		}
+	}
 }
 
 dependencies {
-    testImplementation('org.junit.jupiter:junit-jupiter:5.4.2')
+	testImplementation('org.junit.jupiter:junit-jupiter:5.4.2')
 }
 
 jar {
-    manifest {
-        attributes(
-                'Implementation-Title': project.name,
-                'Implementation-Version': project.version
-        )
-    }
+	manifest {
+		attributes(
+				'Implementation-Title': project.name,
+				'Implementation-Version': project.version
+		)
+	}
 }
 
 test {
-    useJUnitPlatform()
+	useJUnitPlatform()
 }
 
 
 jacocoTestReport {
-    reports {
-        xml.enabled true
-    }
+	reports {
+		xml.enabled true
+	}
 }
-
