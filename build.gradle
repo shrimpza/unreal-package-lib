@@ -5,13 +5,14 @@ plugins {
 }
 
 group = 'net.shrimpworks'
-version = "1.5"
+version = "1.6"
 
-sourceCompatibility = '11'
-targetCompatibility = '11'
+compileJava {
+    options.release = 11
+}
 
-if (System.getenv().containsKey("TRAVIS_BUILD_NUMBER")) {
-    version = "${version}.${System.env.TRAVIS_BUILD_NUMBER}"
+if (System.getenv().containsKey("DRONE_BUILD_NUMBER")) {
+    version = "${version}.${System.env.DRONE_BUILD_NUMBER}"
 }
 
 repositories {
