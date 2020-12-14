@@ -23,6 +23,8 @@ public class PackageReader implements Closeable {
 
 	private static final int READ_BUFFER = 1024 * 8; // use an 8k read buffer
 
+	private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray(); // used for hash encoding
+
 	public final ReaderStats stats = new ReaderStats();
 
 	private final SeekableByteChannel channel;
@@ -54,12 +56,7 @@ public class PackageReader implements Closeable {
 				buffer.clear();
 			}
 
-			byte[] digest = md.digest();
-			StringBuilder sb = new StringBuilder();
-			for (byte b : digest) {
-				sb.append(Integer.toHexString((0xFF & b)));
-			}
-			return sb.toString();
+			return bytesToHex(md.digest()).toLowerCase();
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to generate hash for package.", e);
 		}
@@ -280,6 +277,18 @@ public class PackageReader implements Closeable {
 		}
 
 		return string.trim();
+	}
+
+	// -- private helpers
+
+	private static String bytesToHex(byte[] bytes) {
+		char[] hexChars = new char[bytes.length * 2];
+		for (int i = 0; i < bytes.length; i++) {
+			int v = bytes[i] & 0xFF;
+			hexChars[i * 2] = HEX_ARRAY[v >>> 4];
+			hexChars[i * 2 + 1] = HEX_ARRAY[v & 0x0F];
+		}
+		return new String(hexChars);
 	}
 
 	public static class ReaderStats {

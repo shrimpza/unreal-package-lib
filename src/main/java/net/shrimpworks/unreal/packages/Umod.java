@@ -30,6 +30,8 @@ public class Umod implements Closeable {
 	private static final int UMOD_SIGNATURE = 0x9FE3C5A3;
 	private static final UmodFile[] UMOD_ARRAY = new UmodFile[0];
 
+	private static final String SHA1 = "SHA-1";
+
 	private final PackageReader reader;
 
 	public final int version;
@@ -154,7 +156,7 @@ public class Umod implements Closeable {
 		 */
 		public String sha1() throws IOException {
 			try (PackageReader reader = new PackageReader(read())) {
-				return reader.hash("SHA-1");
+				return reader.hash(SHA1);
 			}
 		}
 

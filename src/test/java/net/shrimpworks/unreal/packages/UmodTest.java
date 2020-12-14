@@ -50,6 +50,12 @@ public class UmodTest {
 			// lets find a random map in the package
 			boolean found = false;
 			for (Umod.UmodFile file : umod.files) {
+				System.out.println(file.name);
+				if (file.name.endsWith(".unr")) {
+					System.out.println(file.sha1());
+					assertEquals(40, file.sha1().length());
+				}
+
 				if (file.name.endsWith(".unr")) {
 					Package pkg = new Package(new PackageReader(file.read()));
 
@@ -69,3 +75,5 @@ public class UmodTest {
 		}
 	}
 }
+//b2a14d77c027b9c7c97e87ebf6ca056ad64ebf3
+//b2a14d77c0270b9c7c97e87ebf6ca056ad64ebf3
