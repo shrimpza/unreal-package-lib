@@ -177,7 +177,7 @@ public class PackageReader implements Closeable {
 		if (!keepChannel && !nonChunked && chunks != null) {
 			Optional<CompressedChunk> chunk = Arrays.stream(chunks)
 													.filter(c -> pos >= c.uncompressedOffset
-																 && pos <= c.uncompressedOffset + c.uncompressedSize)
+																 && pos < c.uncompressedOffset + c.uncompressedSize)
 													.findFirst();
 			chunk.ifPresent(compressedChunk -> {
 				// we're already in the chunk, no need to re-read it
