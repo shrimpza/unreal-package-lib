@@ -267,7 +267,9 @@ public class PackageReader implements Closeable {
 			}
 			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.ISO_8859_1);
 		} else {
-			int len = length > -1 ? length : packageVersion > 117 ? readIndex() : readByte() & 0xFF;
+			// Note: Oddity in some properties, where length byte reports longer than the property length
+			int len = packageVersion > 117 ? readIndex() : length > -1 ? Math.min(length, readByte() & 0xFF) : readByte() & 0xFF;
+
 			if (len > 0) {
 				byte[] val = new byte[len];
 				ensureRemaining(len);
