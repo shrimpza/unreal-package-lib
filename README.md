@@ -6,13 +6,14 @@ Unreal Packages, are used by Unreal Engine games for packaging content such as
 maps, textures, sounds, and the gameplay code itself.
 
 Although the files all have different file extensions for organisation
-purposes only (for example, `.unr` or `.ut2` for maps, `.utx` for textures, 
-`.u` for code), they all have the same structure and are capable of holding
-the same content.
+purposes only (for example, `.unr`, `.ut3`, or `.ut2` for maps, `.utx` for
+textures, `.u` for code), they all have the same structure and are capable of
+holding the same content.
 
-This implementation supports at least Unreal Engine 1 and 2, and has been
-tested using content and assets from Unreal, Unreal Tournament, and Unreal
-Tournament 2004. Your mileage may vary with other games using these engines.
+This implementation supports at Unreal Engines 1, 2 and 3, has been tested
+using content and assets from Unreal, Unreal Tournament, Unreal Tournament 2004,
+and Unreal Tournament 3. Your mileage may vary with other games using these
+engines, especially Unreal Engine 3 variations.
 
 Also provided via the `Umod` class is the ability to read and extract the 
 contents of `.umod` installers, commonly used to distribute larger Unreal and 

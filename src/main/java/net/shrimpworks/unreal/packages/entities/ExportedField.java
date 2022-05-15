@@ -10,6 +10,6 @@ public class ExportedField extends ExportedEntry {
 
 	ExportedField(ExportedEntry export) {
 		super(export.pkg, export.index, export.classIndex, export.classSuperIndex, export.groupIndex, export.name, export.flags, export.size,
-			  export.pos);
+			  export.pos, export.components);
 	}
 }

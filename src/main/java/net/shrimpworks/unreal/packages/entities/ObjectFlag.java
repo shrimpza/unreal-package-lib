@@ -6,49 +6,51 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum ObjectFlag {
-	Transactional(0x00000001),
-	Unreachable(0x00000002),
-	Public(0x00000004),
-	TagImp(0x00000008),
-	TagExp(0x00000010),
-	SourceModified(0x00000020),
-	TagGarbage(0x00000040),
-	NeedLoad(0x00000200),
-	HighlightedName(0x00000400),
-	EliminateObject(0x00000400),
-	InSingularFunc(0x00000800),
-	RemappedName(0x00000800),
-	Suppress(0x00001000),
-	StateChanged(0x00001000),
-	InEndState(0x00002000),
-	Transient(0x00004000),
-	PreLoading(0x00008000),
-	LoadForClient(0x00010000),
-	LoadForServer(0x00020000),
-	LoadForEdit(0x00040000),
-	Standalone(0x00080000),
-	NotForClient(0x00100000),
-	NotForServer(0x00200000),
-	NotForEdit(0x00400000),
-	Destroyed(0x00800000),
-	NeedPostLoad(0x01000000),
-	HasStack(0x02000000),
-	Native(0x04000000),
-	Marked(0x08000000),
-	ErrorShutdown(0x10000000),
-	DebugPostLoad(0x20000000),
-	DebugSerialize(0x40000000),
-	DebugDestroy(0x80000000);
+	Transactional(0x0000000100000000L),
+	Unreachable(0x0000000200000000L),
+	Public(0x0000000400000000L),
+	TagImp(0x0000000800000000L),
+	TagExp(0x0000001000000000L),
+	SourceModified(0x0000002000000000L),
+	TagGarbage(0x0000004000000000L),
+	NeedLoad(0x0000020000000000L),
+	HighlightedName(0x0000040000000000L),
+	EliminateObject(0x0000040000000000L),
+	InSingularFunc(0x0000080000000000L),
+	RemappedName(0x0000080000000000L),
+	Suppress(0x0000100000000000L),
+	StateChanged(0x0000100000000000L),
+	InEndState(0x0000200000000000L),
+	Transient(0x0000400000000000L),
+	PreLoading(0x0000800000000000L),
+	LoadForClient(0x0001000000000000L),
+	LoadForServer(0x0002000000000000L),
+	LoadForEdit(0x0004000000000000L),
+	Standalone(0x0008000000000000L),
+	NotForClient(0x0010000000000000L),
+	NotForServer(0x0020000000000000L),
+	NotForEdit(0x0040000000000000L),
+	Destroyed(0x0080000000000000L),
+	NeedPostLoad(0x0100000000000000L),
+	HasStack(0x0200000000000000L),
+	Native(0x0400000000000000L),
+	Marked(0x0800000000000000L),
+	ErrorShutdown(0x1000000000000000L),
+	DebugPostLoad(0x2000000000000000L),
+	DebugSerialize(0x4000000000000000L),
+	DebugDestroy(0x8000000000000000L);
 
-	private final int flag;
+	private final long flag;
 
-	ObjectFlag(int flag) {
+	ObjectFlag(long flag) {
 		this.flag = flag;
 	}
 
-	public static Set<ObjectFlag> fromFlags(int flags) {
+	public static Set<ObjectFlag> fromFlags(long flags) {
 		Set<ObjectFlag> objectFlags = EnumSet.noneOf(ObjectFlag.class);
+		// support for both 32-bit (UE 1/2 - high) and 64bit (UE3 - low) flags
 		objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
+		objectFlags.addAll(Arrays.stream(values()).filter(f -> (flags << 32 & f.flag) == f.flag).collect(Collectors.toSet()));
 		return objectFlags;
 	}
 }

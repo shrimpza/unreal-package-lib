@@ -1,6 +1,7 @@
 package net.shrimpworks.unreal.packages.entities;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,15 +39,17 @@ public abstract class Export implements Named {
 	 */
 	public final Name name;
 
-	public final int flags;
+	public final long flags;
 	public final int size;
 	public final int pos;
+
+	public final Map<Name, ObjectReference> components;
 
 	// cached collection of children
 	private Set<Export> children;
 
 	Export(Package pkg, int index, ObjectReference classIndex, ObjectReference classSuperIndex, ObjectReference groupIndex, Name name,
-		   int flags, int size, int pos) {
+		   long flags, int size, int pos, Map<Name, ObjectReference> components) {
 		this.pkg = pkg;
 		this.index = index;
 		this.classIndex = classIndex;
@@ -56,6 +59,7 @@ public abstract class Export implements Named {
 		this.flags = flags;
 		this.size = size;
 		this.pos = pos;
+		this.components = components;
 	}
 
 	@Override

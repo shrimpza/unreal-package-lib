@@ -6,11 +6,11 @@ import net.shrimpworks.unreal.packages.entities.ObjectReference;
 
 public class FixedArrayProperty extends UnknownArrayProperty {
 
-	public final int count;
+	public final ObjectReference arrayType;
 
 	public FixedArrayProperty(Package pkg, Name name, ObjectReference arrayType, int count) {
-		super(pkg, name, arrayType);
-		this.count = count;
+		super(pkg, name, count);
+		this.arrayType = arrayType;
 	}
 
 	@Override

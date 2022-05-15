@@ -11,6 +11,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
+
+import net.shrimpworks.unreal.packages.compression.ChunkChannel;
+import net.shrimpworks.unreal.packages.compression.CompressedChunk;
 
 /**
  * Provides the means of directly accessing and parsing the content of package
@@ -27,30 +35,67 @@ public class PackageReader implements Closeable {
 
 	public final ReaderStats stats = new ReaderStats();
 
-	private final SeekableByteChannel channel;
+	private final SeekableByteChannel fileChannel;
 	private final ByteBuffer buffer;
 
-	public PackageReader(SeekableByteChannel channel) {
-		this.channel = channel;
+	private SeekableByteChannel channel;
+
+	protected int version = 0;
+	protected CompressedChunk[] chunks = null;
+
+	private final boolean cacheChunks;
+	private final Map<CompressedChunk, ChunkChannel> chunkCache = new HashMap<>();
+
+	/**
+	 * Creates a new package reader for an Unreal package, represented by the
+	 * provided {@link FileChannel}.
+	 *
+	 * @param fileChannel unreal package file
+	 * @param cacheChunks if true, decompressed chunks from compressed packages
+	 *                    will be kept in memory for reuse, rather than
+	 *                    discarded for potential garbage collection after
+	 *                    moving to another chunk. this increases memory
+	 *                    overhead but may improve read performance.
+	 */
+	public PackageReader(SeekableByteChannel fileChannel, boolean cacheChunks) {
+		this.fileChannel = fileChannel;
+		this.channel = fileChannel;
+
+		this.cacheChunks = cacheChunks;
 		this.buffer = ByteBuffer.allocateDirect(READ_BUFFER).order(ByteOrder.LITTLE_ENDIAN);
 	}
 
+	public PackageReader(Path packageFile, boolean cacheChunks) throws IOException {
+		this(FileChannel.open(packageFile, StandardOpenOption.READ), cacheChunks);
+	}
+
+	public PackageReader(SeekableByteChannel fileChannel) {
+		this(fileChannel, false);
+	}
+
 	public PackageReader(Path packageFile) throws IOException {
-		this(FileChannel.open(packageFile, StandardOpenOption.READ));
+		this(FileChannel.open(packageFile, StandardOpenOption.READ), false);
 	}
 
 	@Override
 	public void close() throws IOException {
-		channel.close();
+		if (channel != null && channel.isOpen()) channel.close();
+		fileChannel.close();
 	}
 
+	/**
+	 * Calculate a hash of the file.
+	 *
+	 * @param alg hash algorithm, eg. SHA-1 or MD5
+	 * @return string representation of file hash
+	 */
 	public String hash(String alg) {
 		try {
 			MessageDigest md = MessageDigest.getInstance(alg);
 
-			channel.position(0);
+			fileChannel.position(0);
 			buffer.clear();
-			while (channel.read(buffer) > 0) {
+			while (fileChannel.read(buffer) > 0) {
 				buffer.flip();
 				md.update(buffer);
 				buffer.clear();
@@ -62,18 +107,55 @@ public class PackageReader implements Closeable {
 		}
 	}
 
+	public void setChunks(CompressedChunk[] chunks) {
+		this.chunks = chunks;
+		this.stats.chunkCount = chunks.length;
+	}
+
 	// --- buffer positioning and management
 
+	/**
+	 * Return the total size of the package file.
+	 *
+	 * @return file size
+	 */
 	public long size() {
 		try {
-			return channel.size();
+			return fileChannel.size();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not determine size of package.");
 		}
 	}
 
+	/**
+	 * Get the current read position within the current buffer.
+	 * <p>
+	 * Use {@link #currentPosition()} to find the current global
+	 * read position.
+	 *
+	 * @return read position in buffer
+	 */
 	public int position() {
 		return buffer.position();
+	}
+
+	/**
+	 * Gets the current global read position, which may be within the current
+	 * file for uncompressed packages or within compressed package headers, but
+	 * may be relative to the current chunk for compressed packages.
+	 *
+	 * @return read position in package
+	 */
+	public int currentPosition() {
+		try {
+			if (channel instanceof ChunkChannel) {
+				return ((ChunkChannel)channel).chunk.uncompressedOffset + (int)(channel.position() - buffer.remaining());
+			} else {
+				return (int)(channel.position() - buffer.remaining());
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not determine current file position");
+		}
 	}
 
 	/**
@@ -82,8 +164,36 @@ public class PackageReader implements Closeable {
 	 * @param pos position in file
 	 */
 	public void moveTo(long pos) {
+		moveTo(pos, false);
+	}
+
+	private void moveTo(long pos, boolean nonChunked) {
+		moveTo(pos, nonChunked, false);
+	}
+
+	private void moveTo(long pos, boolean nonChunked, boolean keepChannel) {
+		if (channel != fileChannel && nonChunked) channel = fileChannel;
+
+		AtomicLong movePos = new AtomicLong(pos);
+
+		// maybe we want to be inside a chunk actually
+		if (!keepChannel && !nonChunked && chunks != null) {
+			Optional<CompressedChunk> chunk = Arrays.stream(chunks)
+													.filter(c -> pos >= c.uncompressedOffset
+																 && pos < c.uncompressedOffset + c.uncompressedSize)
+													.findFirst();
+			chunk.ifPresent(compressedChunk -> {
+				// we're already in the chunk, no need to re-read it
+				if (!(channel instanceof ChunkChannel) || ((ChunkChannel)channel).chunk != compressedChunk) {
+					channel = loadChunk(compressedChunk);
+				}
+
+				movePos.set(pos - compressedChunk.uncompressedOffset);
+			});
+		}
+
 		try {
-			channel.position(pos);
+			channel.position(movePos.get());
 
 			buffer.clear();
 			channel.read(buffer);
@@ -103,11 +213,8 @@ public class PackageReader implements Closeable {
 	 */
 	public void moveRelative(int amount) {
 		try {
-			channel.position(channel.position() + amount - buffer.remaining());
-
-			buffer.clear();
-			channel.read(buffer);
-			buffer.flip();
+			// note: subtract remaining because the current position within the channel will align with the end of the last buffer fill
+			moveTo(channel.position() - buffer.remaining() + amount, false, true);
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not move by " + amount + " bytes within channel", e);
 		} finally {
@@ -134,8 +241,8 @@ public class PackageReader implements Closeable {
 	}
 
 	/**
-	 * Read more data from the current position in the file, retaining unread
-	 * bytes in the buffer.
+	 * Fill the read buffer with more data from the current position, retaining
+	 * currently unread bytes in the buffer.
 	 */
 	public void fillBuffer() {
 		try {
@@ -149,45 +256,80 @@ public class PackageReader implements Closeable {
 		}
 	}
 
-	/**
-	 * Get the current read position within the file.
-	 *
-	 * @return position in package
-	 */
-	public int currentPosition() {
-		try {
-			return (int)(channel.position() - buffer.remaining());
-		} catch (IOException e) {
-			throw new IllegalStateException("Could not determine current file position");
-		}
-	}
-
 	// --- read operations
 
+	/**
+	 * Reads a single byte at the current reader position and advances the
+	 * position by one byte.
+	 *
+	 * @return a byte
+	 */
 	public byte readByte() {
 		return buffer.get();
 	}
 
+	/**
+	 * Reads a 2-byte signed short value from the current reader position and
+	 * advances the position by two bytes.
+	 *
+	 * @return a signed short
+	 */
 	public short readShort() {
 		return buffer.getShort();
 	}
 
+	/**
+	 * Reads a 4-byte signed integer value from the current reader position and
+	 * advances the reader position by 4 bytes.
+	 *
+	 * @return a singed integer
+	 */
 	public int readInt() {
 		return buffer.getInt();
 	}
 
+	/**
+	 * Reads an 8-byte signed long value from the current reader position and
+	 * advances the reader position by 8 bytes.
+	 *
+	 * @return a singed long
+	 */
 	public long readLong() {
 		return buffer.getLong();
 	}
 
+	/**
+	 * Reads a 4-byte signed float value from the current reader position and
+	 * advances the reader position by 4 bytes.
+	 *
+	 * @return a signed float
+	 */
 	public float readFloat() {
 		return buffer.getFloat();
 	}
 
+	/**
+	 * Read <code>length</code> bytes from the package, placing them into the
+	 * destination byte array specified, at the <code>offset</code> within the
+	 * destination array.
+	 *
+	 * @param dest   destination array
+	 * @param offset position within destination to place read bytes
+	 * @param length number of bytes to read
+	 * @return number of bytes read
+	 */
 	public int readBytes(byte[] dest, int offset, int length) {
-		int start = buffer.remaining();
-		buffer.get(dest, offset, Math.min(buffer.remaining(), length));
-		return start - buffer.remaining();
+		int start = currentPosition(); //buffer.remaining();
+
+		int read = 0;
+		while (read < length) {
+			if (buffer.remaining() < length) fillBuffer();
+			int i = currentPosition();
+			buffer.get(dest, offset + read, Math.min(buffer.remaining(), length - read));
+			read += currentPosition() - i;
+		}
+
+		return currentPosition() - start;
 	}
 
 	/**
@@ -195,10 +337,17 @@ public class PackageReader implements Closeable {
 	 * <p>
 	 * Refer to package documentation and reference for description of the
 	 * format.
+	 * <p>
+	 * For Unreal Engine 3 packages, compact indexes are no longer used,
+	 * rather we use plain 32-bit/4-byte integers.
 	 *
-	 * @return a compact index integer
+	 * @return an index value
 	 */
 	public int readIndex() {
+		if (version == 0) throw new IllegalStateException("Version is not set");
+
+		if (version > 178) return readInt();
+
 		boolean negative = false;
 		int num = 0;
 		int len = 6;
@@ -227,37 +376,43 @@ public class PackageReader implements Closeable {
 	}
 
 	/**
-	 * Read a string from the current buffer position.
+	 * Reads a name index from the current buffer position.
 	 * <p>
-	 * The <code>packageVersion</code> parameter is required since string read
-	 * operations differ by version.
-	 * <p>
-	 * The length of the string will be determined automatically.
+	 * For Unreal Engines 1 and 2, this is the same as {@link #readIndex()},
+	 * but Unreal Engine 3 also contains an additional integer string number.
 	 *
-	 * @param packageVersion package version
-	 * @return a string
+	 * @return index of name in names table
 	 */
-	public String readString(int packageVersion) {
-		return readString(packageVersion, -1);
+	public int readNameIndex() {
+		if (version == 0) throw new IllegalStateException("Version is not set");
+
+		if (version < 343) return readIndex();
+		else {
+			int index = readIndex();
+			int number = readInt(); // for UE3, not used
+			return index;
+		}
+	}
+
+	public String readString() {
+		return readString(-1);
 	}
 
 	/**
 	 * Read a string from the current buffer position.
 	 * <p>
-	 * The <code>packageVersion</code> parameter is required since string read
-	 * operations differ by version.
-	 * <p>
-	 * For some properties, length is provided as part of the property and not
-	 * at the start of the string in the case of names or other string values.
+	 * String read operations differ between package versions, so {@link #version} should
+	 * be set prior to string read operations.
 	 *
-	 * @param packageVersion package version
-	 * @param length         length of the string to read, or -1 to read it automatically
+	 * @param length length of the string to read, or -1 to read it automatically
 	 * @return a string
 	 */
-	public String readString(int packageVersion, int length) {
+	public String readString(int length) {
+		if (version == 0) throw new IllegalStateException("Version is not set");
+
 		String string = "";
 
-		if (packageVersion < 64) {
+		if (version < 64) {
 			// read to NUL/0x00
 			byte[] val = new byte[255];
 			byte len = 0, v;
@@ -268,7 +423,7 @@ public class PackageReader implements Closeable {
 			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.ISO_8859_1);
 		} else {
 			// Note: Oddity in some properties, where length byte reports longer than the property length
-			int len = packageVersion > 117 ? readIndex() : length > -1 ? Math.min(length, readByte() & 0xFF) : readByte() & 0xFF;
+			int len = version > 117 ? readIndex() : length > -1 ? Math.min(length, readByte() & 0xFF) : readByte() & 0xFF;
 
 			if (len > 0) {
 				byte[] val = new byte[len];
@@ -293,17 +448,57 @@ public class PackageReader implements Closeable {
 		return new String(hexChars);
 	}
 
+	/**
+	 * For Unreal Engine 3 packages, loads data from a compressed chunk, and
+	 * returns a readable channel, within which normal package read
+	 * operations may be invoked.
+	 *
+	 * @param chunk chunk to load
+	 * @return a decompressed chunk
+	 */
+	private ChunkChannel loadChunk(CompressedChunk chunk) {
+		try {
+			Supplier<ChunkChannel> chunkLoader = () -> {
+				try {
+					moveTo(chunk.compressedOffset, true);
+					if (readInt() != Package.PKG_SIGNATURE) throw new IllegalStateException("Chunk does not seem to be Unreal package data");
+					int blockSize = readInt();
+					int compressedSize = readInt();
+					int uncompressedSize = readInt();
+					int numBlocks = (uncompressedSize + blockSize - 1) / blockSize;
+					int[] blockSizes = new int[numBlocks * 2];
+					for (int i = 0; i < blockSizes.length; i += 2) {
+						blockSizes[i] = readInt(); // compressed size
+						blockSizes[i + 1] = readInt(); // uncompressed size
+					}
+
+					return new ChunkChannel(this, chunk, uncompressedSize, blockSizes);
+				} finally {
+					stats.chunkLoadCount++;
+				}
+			};
+
+			return !cacheChunks ? chunkLoader.get() : chunkCache.computeIfAbsent(chunk, c -> chunkLoader.get());
+		} finally {
+			stats.chunkFetchCount++;
+		}
+	}
+
 	public static class ReaderStats {
 
 		public int moveToCount;
 		public int moveRelativeCount;
 		public int ensureRemainingCount;
 		public int fillBufferCount;
+		public int chunkCount;
+		public int chunkLoadCount;
+		public int chunkFetchCount;
 
 		@Override
 		public String toString() {
-			return String.format("ReaderStats [moveToCount=%s, moveRelativeCount=%s, ensureRemainingCount=%s, fillBufferCount=%s]",
-								 moveToCount, moveRelativeCount, ensureRemainingCount, fillBufferCount);
+			return String.format(
+					"ReaderStats [moveToCount=%s, moveRelativeCount=%s, ensureRemainingCount=%s, fillBufferCount=%s, chunkCount=%s, chunkLoadCount=%s, chunkFetchCount=%s]",
+					moveToCount, moveRelativeCount, ensureRemainingCount, fillBufferCount, chunkCount, chunkLoadCount, chunkFetchCount);
 		}
 	}
 }

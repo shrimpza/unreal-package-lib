@@ -19,6 +19,8 @@ public class ObjectReference {
 	private final Package pkg;
 	public final int index;
 
+	public static final ObjectReference NULL = new ObjectReference(null, 0);
+
 	public ObjectReference(Package pkg, int index) {
 		this.pkg = pkg;
 		this.index = index;

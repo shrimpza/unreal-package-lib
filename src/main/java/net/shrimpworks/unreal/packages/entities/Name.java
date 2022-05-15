@@ -10,9 +10,9 @@ public class Name implements Comparable<Name> {
 	public static final Name NONE = new Name("None", 0);
 
 	public final String name;
-	public final int flags;
+	public final long flags;
 
-	public Name(String name, int flags) {
+	public Name(String name, long flags) {
 		this.name = name;
 		this.flags = flags;
 	}
