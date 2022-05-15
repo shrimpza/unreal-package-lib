@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class PackageTest {
+public class PackageTest extends PackageTestUtils {
 
 	private static Path unrMap;
 	private static Path ut2Map;

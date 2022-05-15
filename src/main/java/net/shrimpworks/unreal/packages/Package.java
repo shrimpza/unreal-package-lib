@@ -7,12 +7,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import net.shrimpworks.unreal.packages.compression.CompressedChunk;
+import net.shrimpworks.unreal.packages.compression.CompressionFormat;
 import net.shrimpworks.unreal.packages.entities.Export;
 import net.shrimpworks.unreal.packages.entities.ExportedEntry;
 import net.shrimpworks.unreal.packages.entities.ExportedField;
@@ -29,6 +34,7 @@ import net.shrimpworks.unreal.packages.entities.objects.ObjectHeader;
 import net.shrimpworks.unreal.packages.entities.properties.ArrayProperty;
 import net.shrimpworks.unreal.packages.entities.properties.BooleanProperty;
 import net.shrimpworks.unreal.packages.entities.properties.ByteProperty;
+import net.shrimpworks.unreal.packages.entities.properties.EnumProperty;
 import net.shrimpworks.unreal.packages.entities.properties.FixedArrayProperty;
 import net.shrimpworks.unreal.packages.entities.properties.FloatProperty;
 import net.shrimpworks.unreal.packages.entities.properties.IntegerProperty;
@@ -64,7 +70,7 @@ import net.shrimpworks.unreal.packages.entities.properties.UnknownArrayProperty;
  */
 public class Package implements Closeable {
 
-	private static final int PKG_SIGNATURE = 0x9E2A83C1;
+	static final int PKG_SIGNATURE = 0x9E2A83C1;
 	private static final int MAX_PROPERTIES = 256;
 
 	private static final String SHA1 = "SHA-1";
@@ -101,10 +107,30 @@ public class Package implements Closeable {
 	 * <li><= 68 Unreal</li>
 	 * <li>>= 69 Unreal Tournament</li>
 	 * <li>>= 117(?) UE2 (UT2003/4)</li>
+	 * <li>>= 178 UE3 (?)</li>
+	 * <li>>= 512 UE3 (UT3)</li>
 	 * </ul>
 	 */
 	public final int version;
 	public final int license;
+
+	/**
+	 * For Unreal Engine 3, the engine version which built the package,
+	 * otherwise defaults to package version.
+	 */
+	public final int engineVersion;
+
+	/**
+	 * For Unreal Engine 3 packages which are composed of several compressed
+	 * data chunks, defines their format. Otherwise defaults to None.
+	 */
+	public final CompressionFormat compressionFormat;
+
+	/**
+	 * For Unreal Engine 3 with compressed chunks, the number of compressed
+	 * data chunks within the package.
+	 */
+	public final int compressedChunkCount;
 
 	/**
 	 * Flags set for this package, also see {@link #flags()}.
@@ -138,6 +164,8 @@ public class Package implements Closeable {
 
 	// cache of already-parsed/read objects, simply keyed by file position
 	private final WeakHashMap<Integer, Object> loadedObjects;
+	// cache of reusable object references
+	private final WeakHashMap<Integer, ObjectReference> objectReferences;
 
 	public Package(Path packageFile) throws IOException {
 		this(new PackageReader(packageFile));
@@ -150,8 +178,23 @@ public class Package implements Closeable {
 
 		if (reader.readInt() != PKG_SIGNATURE) throw new IllegalArgumentException("Package does not seem to be an Unreal package");
 
+		// internal caches
+		this.loadedObjects = new WeakHashMap<>();
+		this.objectReferences = new WeakHashMap<>();
+
 		this.version = reader.readShort();
+		reader.version = version;
+
 		this.license = reader.readShort();
+
+		if (version >= 249) {
+			// maybe we'd want to validate after reading the header
+			int headerSize = reader.readInt();
+		}
+		if (version >= 269) {
+			// this seems to not be used
+			String folderName = reader.readString();
+		}
 
 		this.flags = reader.readInt();
 
@@ -163,6 +206,17 @@ public class Package implements Closeable {
 
 		int importCount = reader.readInt();
 		int importPos = reader.readInt();
+
+		if (version >= 415) {
+			// dependencies table position - not used
+			int dependsPos = reader.readInt();
+		}
+
+		if (version >= 584) {
+			// 16 unknown bytes - a GUID?
+			byte[] unknown = new byte[16];
+			reader.readBytes(unknown, 0, 16);
+		}
 
 		if (version < 68) {
 			// unused, we don't care about the heritage values or the heritage table
@@ -176,7 +230,34 @@ public class Package implements Closeable {
 			for (int i = 0; i < generationCount; i++) {
 				reader.readInt(); // consume genExpCount
 				reader.readInt(); // consume genNameCount
+				if (version > 322) {
+					reader.readInt(); // consume netObjectsCount
+				}
 			}
+		}
+
+		this.engineVersion = version >= 245 ? reader.readInt() : version;
+
+		if (version >= 277) {
+			// we don't track the cooker version
+			int cookerVersion = reader.readInt();
+		}
+
+		// read compressed chunk information, and tell the package reader about them
+		this.compressionFormat = version >= 334 ? CompressionFormat.fromFlag(reader.readInt()) : CompressionFormat.NONE;
+		this.compressedChunkCount = version >= 334 ? reader.readInt() : 0;
+		if (compressionFormat != CompressionFormat.NONE) {
+			CompressedChunk[] chunks = new CompressedChunk[this.compressedChunkCount];
+			for (int i = 0; i < this.compressedChunkCount; i++) {
+				chunks[i] = new CompressedChunk(
+					compressionFormat,
+					reader.readInt(),
+					reader.readInt(),
+					reader.readInt(),
+					reader.readInt()
+				);
+			}
+			reader.setChunks(chunks);
 		}
 
 		// read the names table
@@ -199,8 +280,6 @@ public class Package implements Closeable {
 				objects[i] = e.asObject();
 			}
 		}
-
-		this.loadedObjects = new WeakHashMap<>();
 	}
 
 	@Override
@@ -349,7 +428,7 @@ public class Package implements Closeable {
 
 		for (int i = 0; i < count; i++) {
 			reader.ensureRemaining(256); // more-or-less
-			names[i] = new Name(reader.readString(version), reader.readInt());
+			names[i] = new Name(reader.readString(), version >= 141 ? reader.readLong() : reader.readInt());
 		}
 
 		return names;
@@ -370,7 +449,7 @@ public class Package implements Closeable {
 		reader.moveTo(pos);
 
 		for (int i = 0; i < count; i++) {
-			reader.ensureRemaining(28); // more-or-less, probably less
+			reader.ensureRemaining(128); // more-or-less, usually less
 			exports[i] = readExport(i);
 		}
 
@@ -392,11 +471,20 @@ public class Package implements Closeable {
 		reader.moveTo(pos);
 
 		for (int i = 0; i < count; i++) {
-			reader.ensureRemaining(28); // more-or-less, probably less
+			reader.ensureRemaining(40); // more-or-less, usually less
 			imports[i] = readImport(i);
 		}
 
 		return imports;
+	}
+
+	private ObjectReference objectReference(int index) {
+		if (index == 0) return ObjectReference.NULL;
+		else return objectReferences.computeIfAbsent(index, i -> new ObjectReference(this, i));
+	}
+
+	private Name name(int index) {
+		return names[index];
 	}
 
 	/**
@@ -405,37 +493,82 @@ public class Package implements Closeable {
 	 * @return a new export
 	 */
 	private Export readExport(int index) {
-		ObjectReference expClass = new ObjectReference(this, reader.readIndex());
-		ObjectReference expSuper = new ObjectReference(this, reader.readIndex());
-		ObjectReference expGroup = new ObjectReference(this, reader.readInt());
+		ObjectReference classIndex = objectReference(reader.readIndex());
+		ObjectReference superClassIndex = objectReference(reader.readIndex());
+		ObjectReference groupIndex = objectReference(reader.readInt());
 
-		Name name = names[reader.readIndex()];
-		int flags = reader.readInt();
+		Name name = name(reader.readNameIndex());
+
+		ObjectReference archetype = version >= 220
+			? objectReference(reader.readInt())
+			: ObjectReference.NULL;
+
+		long flags = version >= 195 ? reader.readLong() : reader.readInt();
+
+		// data (properties, etc) size and location
 		int size = reader.readIndex();
-		int pos = name.equals(Name.NONE)
-				? 0
-				: reader.readIndex(); // magical undocumented case; "None" does not have a pos, though it has a (0) size
+		int pos = size > 0 || version >= 249
+			? reader.readIndex()
+			: 0;
+
+		// components
+		Map<Name, ObjectReference> components = Map.of();
+		if (version >= 220 && version < 543) {
+			int componentCount = reader.readInt();
+			components = new HashMap<>();
+			if (componentCount > 0) reader.ensureRemaining((componentCount * 12) + 28);
+			for (int i = 0; i < componentCount; i++) {
+				components.put(name(reader.readNameIndex()), objectReference(reader.readInt()));
+			}
+		}
+
+		if (version >= 220) {
+			int exportFlags = reader.readInt();
+		}
+
+		int netObjectCount = 0;
+		if (version >= 322) {
+			netObjectCount = reader.readInt();
+		}
+
+		if (version >= 220) {
+			byte[] guid = new byte[16];
+			reader.readBytes(guid, 0, 16);
+		}
+
+		if (version >= 487) {
+			int packageFlags = reader.readInt();
+		}
+
+		if (netObjectCount > 0) {
+			ObjectReference[] netObjects = new ObjectReference[netObjectCount];
+			for (int i = 0; i < netObjectCount; i++) {
+				netObjects[i] = objectReference(reader.readIndex());
+			}
+		}
 
 		return new ExportedEntry(
-				this, index,
-				expClass, expSuper, expGroup,
-				name, flags, size, pos
+			this, index,
+			classIndex, superClassIndex, groupIndex,
+			name, flags, size, pos,
+			components
 		);
 	}
 
 	/**
-	 * Read a single export from the current buffer position.
+	 * Read a single import from the current buffer position.
 	 *
-	 * @return a new export
+	 * @return a new import
 	 */
 	private Import readImport(int index) {
+		Name classPackage = name(reader.readNameIndex());
+		Name className = name(reader.readNameIndex());
+		ObjectReference packageIndex = objectReference(reader.readInt());
+		Name name = name(reader.readNameIndex());
+
 		return new Import(
-				this,
-				index,
-				names[reader.readIndex()], // package file
-				names[reader.readIndex()], // class
-				new ObjectReference(this, reader.readInt()),   // package name
-				names[reader.readIndex()]  // name
+			this, index,
+			classPackage, className, packageIndex, name
 		);
 	}
 
@@ -462,23 +595,24 @@ public class Package implements Closeable {
 
 		reader.moveTo(export.pos);
 
-		ObjectHeader header;
+		ObjectHeader header = null;
 		if (export.flags().contains(ObjectFlag.HasStack)) {
 			int node = reader.readIndex();
 			header = new ObjectHeader(
-					node, reader.readIndex(), reader.readLong(), reader.readInt(),
-					node != 0 ? reader.readIndex() : 0
+				node, reader.readIndex(), reader.readLong(), reader.readInt(),
+				node != 0 ? reader.readIndex() : 0
 			);
-		} else {
-			header = null;
+		}
+
+		if (version >= 322) {
+			int netIndex = reader.readIndex();
 		}
 
 		List<Property> properties = readProperties();
 
 		// keep track of how long the properties were, so we can potentially continue reading object data from this point
-		long propsLength = reader.currentPosition();
-
-		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, (int)propsLength);
+		int postPropsPosition = reader.currentPosition();
+		Object newObject = ObjectFactory.newInstance(this, reader, export, header, properties, postPropsPosition);
 
 		loadedObjects.put(export.pos, newObject);
 
@@ -520,17 +654,18 @@ public class Package implements Closeable {
 	 * @return property of the appropriate type
 	 */
 	private Property readProperty() {
-		int nameIndex = reader.readIndex();
-		Name name = names[nameIndex];
+		Name name = name(reader.readNameIndex());
 
 		// the end - don't read or process anything beyond here
 		if (name.equals(Name.NONE)) return new NameProperty(this, name, name);
+
+		if (version > 220) return readPropertyUE3(name);
 
 		byte propInfo = reader.readByte();
 
 		byte type = (byte)(propInfo & 0b00001111); // bits 0 to 3 are the type
 		int size = (propInfo & 0b01110000) >> 4; // bits 4 to 6 are the size
-		boolean arrayFlag = (propInfo & 0b10000000) != 0; // bit 7 is either indicates an array, or if the value is a boolean
+		boolean boolOrArrayFlag = (propInfo & 0b10000000) != 0; // bit 7 is either indicates an array, or if the value is a boolean
 
 		PropertyType propType = PropertyType.get(type);
 
@@ -571,17 +706,49 @@ public class Package implements Closeable {
 
 		// if array and not boolean, next byte is index of property within the array (??)
 		int arrayIndex = 0;
-		if (arrayFlag && propType != PropertyType.BooleanProperty) {
+		if (boolOrArrayFlag && propType != PropertyType.BoolProperty) {
 			arrayIndex = reader.readByte();
 		}
 
-		Property property = createProperty(name, propType, structType, size, arrayFlag);
+		Property property = createProperty(name, propType, structType, size, boolOrArrayFlag);
 
 		/*
 		   special case for array handling. array elements are just normal properties
 		   with the arrayFlag set and an array index.
 		 */
-		if (arrayFlag && propType != PropertyType.BooleanProperty) {
+		if (boolOrArrayFlag && propType != PropertyType.BoolProperty) {
+			return new ArrayProperty.ArrayItem(property, arrayIndex);
+		}
+
+		return property;
+	}
+
+	private Property readPropertyUE3(Name name) {
+		Name typeName = name(reader.readNameIndex());
+		PropertyType propType = PropertyType.get(typeName);
+
+		if (propType == null) {
+			throw new IllegalStateException(String.format("Unknown property type named %s for property %s", typeName.name, name.name));
+		}
+
+		if (propType == PropertyType.ByteProperty) propType = PropertyType.EnumProperty;
+
+		int size = reader.readInt();
+		int arrayIndex = reader.readInt();
+
+		StructProperty.StructType structType = propType == PropertyType.StructProperty
+			? StructProperty.StructType.get(name(reader.readNameIndex()))
+			: null;
+
+		boolean booleanFlag = propType == PropertyType.BoolProperty && reader.readInt() > 0;
+
+		Property property = createProperty(name, propType, structType, size, booleanFlag);
+
+		/*
+		   special case for array handling. array elements are just normal properties
+		   with the arrayFlag set and an array index.
+		 */
+		if (propType == PropertyType.ArrayProperty && !(property instanceof ArrayProperty)) {
 			return new ArrayProperty.ArrayItem(property, arrayIndex);
 		}
 
@@ -599,32 +766,33 @@ public class Package implements Closeable {
 	 * @param arrayFlag  the final bit of the property header, sometimes used to infer things
 	 * @return a new property
 	 */
-	private Property createProperty(
-			Name name, PropertyType type, StructProperty.StructType structType, int size, boolean arrayFlag) {
+	private Property createProperty(Name name, PropertyType type, StructProperty.StructType structType, int size, boolean arrayFlag) {
 
 		int startPos = reader.position();
 
 		try {
 			switch (type) {
-				case BooleanProperty:
+				case BoolProperty:
 					return new BooleanProperty(this, name, arrayFlag);
 				case ByteProperty:
 					return new ByteProperty(this, name, reader.readByte());
-				case IntegerProperty:
+				case EnumProperty:
+					return new EnumProperty(this, name, name(reader.readNameIndex()));
+				case IntProperty:
 					return new IntegerProperty(this, name, reader.readInt());
 				case FloatProperty:
 					return new FloatProperty(this, name, reader.readFloat());
 				case StrProperty:
 				case StringProperty:
-					return new StringProperty(this, name, reader.readString(version, size));
+					return new StringProperty(this, name, reader.readString(size));
 				case NameProperty:
-					return new NameProperty(this, name, name.equals(Name.NONE) ? Name.NONE : names[reader.readIndex()]);
+					return new NameProperty(this, name, name.equals(Name.NONE) ? Name.NONE : name(reader.readNameIndex()));
 				case ObjectProperty:
-					return new ObjectProperty(this, name, new ObjectReference(this, reader.readIndex()));
+					return new ObjectProperty(this, name, objectReference(reader.readIndex()));
 				case StructProperty:
 					switch (structType) {
 						case PointRegion:
-							return new StructProperty.PointRegionProperty(this, name, new ObjectReference(this, reader.readIndex()),
+							return new StructProperty.PointRegionProperty(this, name, objectReference(reader.readIndex()),
 																		  reader.readInt(), reader.readByte());
 						case Scale:
 							return new StructProperty.ScaleProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
@@ -651,9 +819,18 @@ public class Package implements Closeable {
 				case VectorProperty:
 					return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat());
 				case ArrayProperty:
-					return new UnknownArrayProperty(this, name, new ObjectReference(this, reader.readIndex()));
+					int arraySize = reader.readIndex();
+					if (name.name.equalsIgnoreCase("ReferencedTextures")) {
+						List<ObjectProperty> items = IntStream.range(0, arraySize)
+															  .mapToObj(i -> new ObjectProperty(
+																  this, name, objectReference(reader.readIndex())
+															  ))
+															  .collect(Collectors.toList());
+						return new ArrayProperty(this, name, items);
+					}
+					return new UnknownArrayProperty(this, name, arraySize);
 				case FixedArrayProperty:
-					return new FixedArrayProperty(this, name, new ObjectReference(this, reader.readIndex()), reader.readIndex());
+					return new FixedArrayProperty(this, name, objectReference(reader.readIndex()), reader.readIndex());
 				default:
 					throw new IllegalArgumentException("Cannot read unsupported property type " + type.name());
 			}
