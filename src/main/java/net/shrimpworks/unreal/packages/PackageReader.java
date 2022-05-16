@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -425,11 +426,15 @@ public class PackageReader implements Closeable {
 			// Note: Oddity in some properties, where length byte reports longer than the property length
 			int len = version > 117 ? readIndex() : length > -1 ? Math.min(length, readByte() & 0xFF) : readByte() & 0xFF;
 
-			if (len > 0) {
-				byte[] val = new byte[len];
-				ensureRemaining(len);
+			// UE3 uses negative lengths to indicate unicode strings
+			Charset charset = len < 0 ? StandardCharsets.UTF_16LE : StandardCharsets.ISO_8859_1;
+			int readLen = len < 0 ? -(len * 2) : len;
+
+			if (readLen != 0) {
+				byte[] val = new byte[readLen];
+				ensureRemaining(readLen);
 				buffer.get(val);
-				string = new String(val, StandardCharsets.ISO_8859_1);
+				string = new String(val, charset);
 			}
 		}
 
@@ -461,7 +466,8 @@ public class PackageReader implements Closeable {
 			Supplier<ChunkChannel> chunkLoader = () -> {
 				try {
 					moveTo(chunk.compressedOffset, true);
-					if (readInt() != Package.PKG_SIGNATURE) throw new IllegalStateException("Chunk does not seem to be Unreal package data");
+					if (readInt() != Package.PKG_SIGNATURE)
+						throw new IllegalStateException("Chunk does not seem to be Unreal package data");
 					int blockSize = readInt();
 					int compressedSize = readInt();
 					int uncompressedSize = readInt();
@@ -497,8 +503,8 @@ public class PackageReader implements Closeable {
 		@Override
 		public String toString() {
 			return String.format(
-					"ReaderStats [moveToCount=%s, moveRelativeCount=%s, ensureRemainingCount=%s, fillBufferCount=%s, chunkCount=%s, chunkLoadCount=%s, chunkFetchCount=%s]",
-					moveToCount, moveRelativeCount, ensureRemainingCount, fillBufferCount, chunkCount, chunkLoadCount, chunkFetchCount);
+				"ReaderStats [moveToCount=%s, moveRelativeCount=%s, ensureRemainingCount=%s, fillBufferCount=%s, chunkCount=%s, chunkLoadCount=%s, chunkFetchCount=%s]",
+				moveToCount, moveRelativeCount, ensureRemainingCount, fillBufferCount, chunkCount, chunkLoadCount, chunkFetchCount);
 		}
 	}
 }
