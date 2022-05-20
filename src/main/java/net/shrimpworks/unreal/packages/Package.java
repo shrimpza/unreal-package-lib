@@ -25,6 +25,7 @@ import net.shrimpworks.unreal.packages.entities.ExportedObject;
 import net.shrimpworks.unreal.packages.entities.FieldTypes;
 import net.shrimpworks.unreal.packages.entities.Import;
 import net.shrimpworks.unreal.packages.entities.Name;
+import net.shrimpworks.unreal.packages.entities.NameNumber;
 import net.shrimpworks.unreal.packages.entities.Named;
 import net.shrimpworks.unreal.packages.entities.ObjectFlag;
 import net.shrimpworks.unreal.packages.entities.ObjectReference;
@@ -428,7 +429,7 @@ public class Package implements Closeable {
 
 		for (int i = 0; i < count; i++) {
 			reader.ensureRemaining(256); // more-or-less
-			names[i] = new Name(reader.readString(), version >= 141 ? reader.readLong() : reader.readInt());
+			names[i] = new Name(reader.readString(), 0, version >= 141 ? reader.readLong() : reader.readInt());
 		}
 
 		return names;
@@ -485,6 +486,10 @@ public class Package implements Closeable {
 
 	private Name name(int index) {
 		return names[index];
+	}
+
+	private Name name(NameNumber name) {
+		return new Name(names[name.name].name, name.number, names[name.name].flags);
 	}
 
 	/**

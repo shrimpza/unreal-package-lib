@@ -18,7 +18,9 @@ public enum PropertyType {
 	StrProperty((byte)13),
 	MapProperty((byte)14),
 	FixedArrayProperty((byte)15),
-	EnumProperty((byte)-1);
+	EnumProperty((byte)-1),
+	InterfaceProperty((byte)-1),
+	ComponentProperty((byte)-1);
 
 	private final byte type;
 

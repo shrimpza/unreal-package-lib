@@ -7,18 +7,24 @@ import java.util.Set;
  */
 public class Name implements Comparable<Name> {
 
-	public static final Name NONE = new Name("None", 0);
+	public static final Name NONE = new Name("None", 0, 0);
 
 	public final String name;
+	public final int number;
 	public final long flags;
 
-	public Name(String name, long flags) {
+	public Name(String name, int number, long flags) {
 		this.name = name;
+		this.number = number;
 		this.flags = flags;
 	}
 
+	public Name(String name, int number) {
+		this(name, number, 0);
+	}
+
 	public Name(String name) {
-		this(name, 0);
+		this(name, 0, 0);
 	}
 
 	public Set<ObjectFlag> flags() {
@@ -27,7 +33,7 @@ public class Name implements Comparable<Name> {
 
 	@Override
 	public String toString() {
-		return String.format("Name [name=%s, flags=%s]", name, flags());
+		return String.format("Name [name=%s, number=%d, flags=%s]", name, number, flags());
 	}
 
 	@Override

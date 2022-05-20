@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 
 import net.shrimpworks.unreal.packages.compression.ChunkChannel;
 import net.shrimpworks.unreal.packages.compression.CompressedChunk;
+import net.shrimpworks.unreal.packages.entities.NameNumber;
 
 /**
  * Provides the means of directly accessing and parsing the content of package
@@ -186,7 +187,7 @@ public class PackageReader implements Closeable {
 			chunk.ifPresent(compressedChunk -> {
 				// we're already in the chunk, no need to re-read it
 				if (!(channel instanceof ChunkChannel) || ((ChunkChannel)channel).chunk != compressedChunk) {
-					channel = loadChunk(compressedChunk);
+					channel = loadChunk(compressedChunk, cacheChunks);
 				}
 
 				movePos.set(pos - compressedChunk.uncompressedOffset);
@@ -384,14 +385,14 @@ public class PackageReader implements Closeable {
 	 *
 	 * @return index of name in names table
 	 */
-	public int readNameIndex() {
+	public NameNumber readNameIndex() {
 		if (version == 0) throw new IllegalStateException("Version is not set");
 
-		if (version < 343) return readIndex();
+		if (version < 343) return new NameNumber(readIndex());
 		else {
 			int index = readIndex();
 			int number = readInt(); // for UE3, not used
-			return index;
+			return new NameNumber(index, number);
 		}
 	}
 
@@ -461,7 +462,11 @@ public class PackageReader implements Closeable {
 	 * @param chunk chunk to load
 	 * @return a decompressed chunk
 	 */
-	private ChunkChannel loadChunk(CompressedChunk chunk) {
+	public ChunkChannel loadChunk(CompressedChunk chunk) {
+		return loadChunk(chunk, false);
+	}
+
+	private ChunkChannel loadChunk(CompressedChunk chunk, boolean cache) {
 		try {
 			Supplier<ChunkChannel> chunkLoader = () -> {
 				try {
@@ -484,7 +489,7 @@ public class PackageReader implements Closeable {
 				}
 			};
 
-			return !cacheChunks ? chunkLoader.get() : chunkCache.computeIfAbsent(chunk, c -> chunkLoader.get());
+			return !cache ? chunkLoader.get() : chunkCache.computeIfAbsent(chunk, c -> chunkLoader.get());
 		} finally {
 			stats.chunkFetchCount++;
 		}
