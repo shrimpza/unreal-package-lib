@@ -26,13 +26,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class PackageUE3Test extends PackageTestUtils {
 
-	private static final String UT3_MAP_URL = "https://code.shrimpworks.za.net/artefacts/net/shrimpworks/unreal-package-lib/resources/DM-MCC-Morbias.ut3.gz";
+	private static final String UT3_MAP_URL = "https://code.shrimpworks.za.net/artefacts/net/shrimpworks/unreal-package-lib/resources/DM-MCC-DeathFan.ut3.gz";
 
 	private static Path ut3Map;
 
 	@BeforeAll
 	public static void setup() throws IOException, InterruptedException {
-		ut3Map = fetchAndCache(UT3_MAP_URL, Paths.get(System.getProperty("java.io.tmpdir", "/tmp")).resolve("DM-MMC-Morbias.ut3"));
+		ut3Map = fetchAndCache(UT3_MAP_URL, Paths.get(System.getProperty("java.io.tmpdir", "/tmp")).resolve("DM-MMC-DeathFan.ut3"));
 	}
 
 	@Test
@@ -41,7 +41,7 @@ public class PackageUE3Test extends PackageTestUtils {
 			 Package pkg = new Package(reader)) {
 
 			try {
-				ExportedObject o = pkg.objectByName(new Name("MorbiasScreenshot"));
+				ExportedObject o = pkg.objectByName(new Name("DeathFanScreenshot"));
 				System.out.printf("%s :: %s%n", o.classIndex.get().name().name, o.name.name);
 				Object obj = o.object();
 				for (Property property : obj.properties) {
