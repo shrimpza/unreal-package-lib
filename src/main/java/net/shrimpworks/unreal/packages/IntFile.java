@@ -28,7 +28,9 @@ public class IntFile {
 	private static final Pattern SECTION = Pattern.compile("\\s*\\[([^]]*)\\]\\s*");
 	private static final Pattern KEY_VALUE = Pattern.compile("\\s*([^=]*)=(.*)");
 
-	private static final Pattern MAP_VALUE = Pattern.compile("\\s*\\(([^)]*)\\)");
+	private static final Pattern MAP_VALUE = Pattern.compile("\\s*\\((.*)\\)");
+	// TODO MAP_SUB attempts to support objects inside objects
+	private static final Pattern MAP_SUB = Pattern.compile(".*?([\\s]*?,?([^=]*)=\\(([^)]*)\\).*?).*?");
 	private static final String MAP_VALUE_SPLIT = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
 	private final List<Section> sections;

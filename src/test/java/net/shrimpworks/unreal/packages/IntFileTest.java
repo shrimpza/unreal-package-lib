@@ -16,6 +16,7 @@ public class IntFileTest {
 
 	private Path tmpInt;
 	private Path tmpUcl;
+	private Path tmpIni;
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -27,12 +28,17 @@ public class IntFileTest {
 		try (InputStream is = getClass().getResourceAsStream("UclFile.ucl")) {
 			Files.copy(is, tmpUcl, StandardCopyOption.REPLACE_EXISTING);
 		}
+		tmpIni = Files.createTempFile("test-ini-", ".ini");
+		try (InputStream is = getClass().getResourceAsStream("UT3IniFile.ini")) {
+			Files.copy(is, tmpIni, StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 
 	@AfterEach
 	public void teardown() throws IOException {
 		Files.deleteIfExists(tmpInt);
 		Files.deleteIfExists(tmpUcl);
+		Files.deleteIfExists(tmpIni);
 	}
 
 	@Test
@@ -68,5 +74,19 @@ public class IntFileTest {
 
 		assertTrue(uclFile.section("root").value("Mutator") instanceof IntFile.MapValue);
 		assertEquals("My Mutator", ((IntFile.MapValue)uclFile.section("root").value("Mutator")).get("FallbackName"));
+	}
+
+	@Test
+	public void parseUt3IniFile() throws IOException {
+		IntFile iniFile = new IntFile(tmpIni);
+
+		IntFile.Section charData = iniFile.section("UTGame.UTCustomChar_Data");
+		assertTrue(charData.value("+Parts") instanceof IntFile.ListValue);
+		assertTrue(charData.asList("+Parts").get(0) instanceof IntFile.MapValue);
+		assertEquals("PART_Head", ((IntFile.MapValue)charData.asList("+Parts").get(0)).get("Part"));
+
+		assertTrue(charData.value("+Characters") instanceof IntFile.ListValue);
+		assertTrue(charData.asList("+Characters").get(0) instanceof IntFile.MapValue);
+		assertEquals("Homer CELLSHADE", ((IntFile.MapValue)charData.asList("+Characters").get(0)).get("CharName"));
 	}
 }
