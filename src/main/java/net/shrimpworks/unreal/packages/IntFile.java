@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
  */
 public class IntFile {
 
+	private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+
 	private static final Pattern SECTION = Pattern.compile("\\s*\\[([^]]*)\\]\\s*");
 	private static final Pattern KEY_VALUE = Pattern.compile("\\s*([^=]*)=(.*)");
 
@@ -36,7 +40,7 @@ public class IntFile {
 	private final List<Section> sections;
 
 	public IntFile(Path intFile) throws IOException {
-		this(FileChannel.open(intFile, StandardOpenOption.READ), false);
+		this(FileChannel.open(intFile, StandardOpenOption.READ), false, DEFAULT_CHARSET);
 	}
 
 	/**
@@ -48,11 +52,11 @@ public class IntFile {
 	 * @throws IOException reading file failed
 	 */
 	public IntFile(Path intFile, boolean syntheticRoot) throws IOException {
-		this(FileChannel.open(intFile, StandardOpenOption.READ), syntheticRoot);
+		this(FileChannel.open(intFile, StandardOpenOption.READ), syntheticRoot, DEFAULT_CHARSET);
 	}
 
 	public IntFile(SeekableByteChannel channel) throws IOException {
-		this(channel, false);
+		this(channel, false, DEFAULT_CHARSET);
 	}
 
 	/**
@@ -63,10 +67,10 @@ public class IntFile {
 	 *                      to hold items which don't have a section header
 	 * @throws IOException reading channel failed
 	 */
-	public IntFile(SeekableByteChannel channel, boolean syntheticRoot) throws IOException {
+	public IntFile(SeekableByteChannel channel, boolean syntheticRoot, Charset encoding) throws IOException {
 		this.sections = new ArrayList<>();
 
-		try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, "UTF-8"))) {
+		try (BufferedReader reader = new BufferedReader(Channels.newReader(channel, encoding))) {
 			String r;
 			Section section = null;
 			if (syntheticRoot) {

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'net.shrimpworks'
-version = "1.8"
+version = "1.9"
 
 compileJava {
 	options.release = 11
