@@ -69,45 +69,27 @@ public class DXT5Decompressor {
 
 	private static byte a2Value(byte code, short a0, short a1) {
 		if (a0 > a1) {
-			switch (code) {
-				case 1:
-					return (byte)a1;
-				case 2:
-					return (byte)((6 * a0 + 1 * a1) / 7);
-				case 3:
-					return (byte)((5 * a0 + 2 * a1) / 7);
-				case 4:
-					return (byte)((4 * a0 + 3 * a1) / 7);
-				case 5:
-					return (byte)((3 * a0 + 4 * a1) / 7);
-				case 6:
-					return (byte)((2 * a0 + 5 * a1) / 7);
-				case 7:
-					return (byte)((1 * a0 + 6 * a1) / 7);
-				case 0:
-				default:
-					return (byte)a0;
-			}
+			return switch (code) {
+				case 1 -> (byte)a1;
+				case 2 -> (byte)((6 * a0 + 1 * a1) / 7);
+				case 3 -> (byte)((5 * a0 + 2 * a1) / 7);
+				case 4 -> (byte)((4 * a0 + 3 * a1) / 7);
+				case 5 -> (byte)((3 * a0 + 4 * a1) / 7);
+				case 6 -> (byte)((2 * a0 + 5 * a1) / 7);
+				case 7 -> (byte)((1 * a0 + 6 * a1) / 7);
+				default -> (byte)a0;
+			};
 		} else {
-			switch (code) {
-				case 1:
-					return (byte)a1;
-				case 2:
-					return (byte)((4 * a0 + 1 * a1) / 5);
-				case 3:
-					return (byte)((3 * a0 + 2 * a1) / 5);
-				case 4:
-					return (byte)((2 * a0 + 3 * a1) / 5);
-				case 5:
-					return (byte)((1 * a0 + 4 * a1) / 5);
-				case 6:
-					return 0;
-				case 7:
-					return (byte)0xFF;
-				case 0:
-				default:
-					return (byte)a0;
-			}
+			return switch (code) {
+				case 1 -> (byte)a1;
+				case 2 -> (byte)((4 * a0 + 1 * a1) / 5);
+				case 3 -> (byte)((3 * a0 + 2 * a1) / 5);
+				case 4 -> (byte)((2 * a0 + 3 * a1) / 5);
+				case 5 -> (byte)((1 * a0 + 4 * a1) / 5);
+				case 6 -> 0;
+				case 7 -> (byte)0xFF;
+				default -> (byte)a0;
+			};
 		}
 	}
 }

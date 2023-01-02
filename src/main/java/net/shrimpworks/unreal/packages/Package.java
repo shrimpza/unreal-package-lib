@@ -688,26 +688,13 @@ public class Package implements Closeable {
 			}
 		}
 
-		switch (size) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-				size = PROPERTY_SIZE_MAP[size];
-				break;
-			case 5:
-				size = reader.readByte() & 0xFF;
-				break;
-			case 6:
-				size = reader.readShort();
-				break;
-			case 7:
-				size = reader.readInt();
-				break;
-			default:
-				throw new IllegalArgumentException(String.format("Unknown property field size %d", size));
-		}
+		size = switch (size) {
+			case 0, 1, 2, 3, 4 -> PROPERTY_SIZE_MAP[size];
+			case 5 -> reader.readByte() & 0xFF;
+			case 6 -> reader.readShort();
+			case 7 -> reader.readInt();
+			default -> throw new IllegalArgumentException(String.format("Unknown property field size %d", size));
+		};
 
 		// if array and not boolean, next byte is index of property within the array (??)
 		int arrayIndex = 0;

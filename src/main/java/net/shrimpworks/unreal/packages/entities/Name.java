@@ -39,8 +39,7 @@ public class Name implements Comparable<Name> {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof Name)) return false;
-		Name other = (Name)o;
+		if (!(o instanceof Name other)) return false;
 		return java.util.Objects.equals(name, other.name);
 	}
 

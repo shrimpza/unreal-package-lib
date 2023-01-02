@@ -4,18 +4,18 @@ type: docker
 
 steps:
   - name: test
-    image: gradle:7.3.1-jdk11
+    image: gradle:7.6-jdk17-focal
     commands:
-      - gradle test
+      - ./gradlew test
   - name: publish
-    image: gradle:7.3.1-jdk11
+    image: gradle:7.6-jdk17-focal
     environment:
       ARTEFACTS_USER:
         from_secret: ARTEFACTS_USER
       ARTEFACTS_PASSWORD:
         from_secret: ARTEFACTS_PASSWORD
     commands:
-      - gradle publish
+      - ./gradlew publish
     when:
       ref:
         - refs/heads/master

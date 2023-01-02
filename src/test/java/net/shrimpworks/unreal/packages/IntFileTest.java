@@ -50,8 +50,8 @@ public class IntFileTest {
 		IntFile.Section lang = intFile.section("Language");
 		assertTrue(lang.value("Language") instanceof IntFile.SimpleValue);
 		assertTrue(lang.value("LangId") instanceof IntFile.SimpleValue);
-		assertEquals("English (International)", ((IntFile.SimpleValue)lang.value("Language")).value);
-		assertEquals("9", ((IntFile.SimpleValue)lang.value("LangId")).value);
+		assertEquals("English (International)", ((IntFile.SimpleValue)lang.value("Language")).value());
+		assertEquals("9", ((IntFile.SimpleValue)lang.value("LangId")).value());
 
 		IntFile.Section pub = intFile.section("Public");
 		assertTrue(pub.value("Preferences") instanceof IntFile.ListValue);

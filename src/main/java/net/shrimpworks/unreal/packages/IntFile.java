@@ -202,13 +202,7 @@ public class IntFile {
 	public interface Value {
 	}
 
-	public static class SimpleValue implements Value {
-
-		public final String value;
-
-		public SimpleValue(String value) {
-			this.value = value;
-		}
+	public record SimpleValue(String value) implements Value {
 
 		@Override
 		public String toString() {
@@ -216,13 +210,7 @@ public class IntFile {
 		}
 	}
 
-	public static class ListValue implements Value {
-
-		public final List<Value> values;
-
-		public ListValue(List<Value> values) {
-			this.values = values;
-		}
+	public record ListValue(List<Value> values) implements Value {
 
 		public Value get(int index) {
 			return values.get(index);
@@ -234,13 +222,7 @@ public class IntFile {
 		}
 	}
 
-	public static class MapValue implements Value {
-
-		public final Map<String, String> value;
-
-		public MapValue(Map<String, String> value) {
-			this.value = value;
-		}
+	public record MapValue(Map<String, String> value) implements Value {
 
 		public String get(String key) {
 			return value.get(key);

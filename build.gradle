@@ -2,13 +2,14 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'jacoco'
+	id 'org.gradlex.extra-java-module-info' version '1.1'
 }
 
 group = 'net.shrimpworks'
-version = "1.9"
+version = "1.10"
 
 compileJava {
-	options.release = 11
+	options.release = 17
 }
 
 if (System.getenv().containsKey("DRONE_BUILD_NUMBER")) {
@@ -41,9 +42,21 @@ publishing {
 }
 
 dependencies {
-  implementation('org.anarres.lzo:lzo-core:1.0.6')
+  implementation('org.anarres.lzo:lzo-core:1.0.6') {
+		exclude group: 'com.google.code.findbugs', module: 'annotations'
+		exclude group: 'commons-logging', module: 'commons-logging'
+	}
 
   testImplementation('org.junit.jupiter:junit-jupiter:5.9.0')
+}
+
+extraJavaModuleInfo {
+	// failOnMissingModuleInfo.set(false)
+	module("org.anarres.lzo:lzo-core", "lzo.core") {
+		exports("org.anarres.lzo")
+
+		requires("java.base")
+	}
 }
 
 jar {

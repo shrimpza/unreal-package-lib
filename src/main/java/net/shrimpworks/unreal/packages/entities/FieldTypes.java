@@ -26,7 +26,7 @@ public enum FieldTypes {
 	StrProperty,
 	StringProperty;
 
-	private static Set<String> STRINGS = Arrays.stream(values()).map(java.lang.Enum::name).collect(Collectors.toSet());
+	private static final Set<String> STRINGS = Arrays.stream(values()).map(java.lang.Enum::name).collect(Collectors.toSet());
 
 	public static boolean isField(ObjectReference classRef) {
 		Named named = classRef.get();

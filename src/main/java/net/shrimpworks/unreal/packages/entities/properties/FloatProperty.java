@@ -2,7 +2,6 @@ package net.shrimpworks.unreal.packages.entities.properties;
 
 import net.shrimpworks.unreal.packages.Package;
 import net.shrimpworks.unreal.packages.entities.Name;
-import net.shrimpworks.unreal.packages.entities.properties.Property;
 
 public class FloatProperty extends Property {
 
