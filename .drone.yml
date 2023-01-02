@@ -6,7 +6,7 @@ steps:
   - name: test
     image: gradle:7.6-jdk17-focal
     commands:
-      - ./gradlew test
+      - gradle --no-daemon test
   - name: publish
     image: gradle:7.6-jdk17-focal
     environment:
@@ -15,7 +15,7 @@ steps:
       ARTEFACTS_PASSWORD:
         from_secret: ARTEFACTS_PASSWORD
     commands:
-      - ./gradlew publish
+      - gradle --no-daemon publish
     when:
       ref:
         - refs/heads/master

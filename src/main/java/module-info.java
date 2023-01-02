@@ -1,4 +1,4 @@
-module net.shrimpworks.unreal.packages {
+module shrimpworks.unreal.packages {
 	requires java.base;
 	requires java.desktop;
 
