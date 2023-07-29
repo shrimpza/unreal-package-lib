@@ -6,15 +6,15 @@ plugins {
 }
 
 group = 'net.shrimpworks'
-version = "1.10"
+version = "1.11"
+if (System.getenv().containsKey("BUILD_NUMBER")) {
+	version += ".${System.env.BUILD_NUMBER}"
+} else version += ".DEV"
 
 compileJava {
 	options.release = 17
 }
 
-if (System.getenv().containsKey("DRONE_BUILD_NUMBER")) {
-	version = "${version}.${System.env.DRONE_BUILD_NUMBER}"
-}
 
 repositories {
 	mavenCentral()
@@ -47,7 +47,7 @@ dependencies {
 		exclude group: 'commons-logging', module: 'commons-logging'
 	}
 
-  testImplementation('org.junit.jupiter:junit-jupiter:5.9.0')
+  testImplementation('org.junit.jupiter:junit-jupiter:5.9.2')
 }
 
 extraJavaModuleInfo {
@@ -75,6 +75,6 @@ test {
 
 jacocoTestReport {
 	reports {
-		xml.enabled true
+		xml.required = true
 	}
 }
