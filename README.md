@@ -131,13 +131,3 @@ gradlew.bat build   # windows
 
 After build completes, the `.build/libs/` directory will include a `.jar` file
 suitable for inclusion in your project. 
-
-## Binaries / Maven Repository
-
-A Maven repository containing the latest builds is also available:
-
-Repository URL: https://code.shrimpworks.za.net/artefacts 
-
-- Group: `net.shrimpworks`
-- Artefact: `unreal-package-lib`
-- Version: `1.+`
