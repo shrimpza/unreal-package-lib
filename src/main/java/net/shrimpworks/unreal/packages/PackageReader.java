@@ -37,7 +37,7 @@ public class PackageReader implements Closeable {
 
 	public final ReaderStats stats = new ReaderStats();
 
-	private final SeekableByteChannel fileChannel;
+	private final SeekableByteChannel pgkChannel;
 	private final ByteBuffer buffer;
 
 	private SeekableByteChannel channel;
@@ -52,16 +52,16 @@ public class PackageReader implements Closeable {
 	 * Creates a new package reader for an Unreal package, represented by the
 	 * provided {@link FileChannel}.
 	 *
-	 * @param fileChannel unreal package file
+	 * @param pkgChannel  unreal package bytes
 	 * @param cacheChunks if true, decompressed chunks from compressed packages
 	 *                    will be kept in memory for reuse, rather than
 	 *                    discarded for potential garbage collection after
 	 *                    moving to another chunk. this increases memory
 	 *                    overhead but may improve read performance.
 	 */
-	public PackageReader(SeekableByteChannel fileChannel, boolean cacheChunks) {
-		this.fileChannel = fileChannel;
-		this.channel = fileChannel;
+	public PackageReader(SeekableByteChannel pkgChannel, boolean cacheChunks) {
+		this.pgkChannel = pkgChannel;
+		this.channel = pkgChannel;
 
 		this.cacheChunks = cacheChunks;
 		this.buffer = ByteBuffer.allocateDirect(READ_BUFFER).order(ByteOrder.LITTLE_ENDIAN);
@@ -71,8 +71,8 @@ public class PackageReader implements Closeable {
 		this(FileChannel.open(packageFile, StandardOpenOption.READ), cacheChunks);
 	}
 
-	public PackageReader(SeekableByteChannel fileChannel) {
-		this(fileChannel, false);
+	public PackageReader(SeekableByteChannel pkgChannel) {
+		this(pkgChannel, false);
 	}
 
 	public PackageReader(Path packageFile) throws IOException {
@@ -82,7 +82,7 @@ public class PackageReader implements Closeable {
 	@Override
 	public void close() throws IOException {
 		if (channel != null && channel.isOpen()) channel.close();
-		fileChannel.close();
+		pgkChannel.close();
 	}
 
 	/**
@@ -95,9 +95,9 @@ public class PackageReader implements Closeable {
 		try {
 			MessageDigest md = MessageDigest.getInstance(alg);
 
-			fileChannel.position(0);
+			pgkChannel.position(0);
 			buffer.clear();
-			while (fileChannel.read(buffer) > 0) {
+			while (pgkChannel.read(buffer) > 0) {
 				buffer.flip();
 				md.update(buffer);
 				buffer.clear();
@@ -123,7 +123,7 @@ public class PackageReader implements Closeable {
 	 */
 	public long size() {
 		try {
-			return fileChannel.size();
+			return pgkChannel.size();
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not determine size of package.");
 		}
@@ -174,7 +174,7 @@ public class PackageReader implements Closeable {
 	}
 
 	private void moveTo(long pos, boolean nonChunked, boolean keepChannel) {
-		if (channel != fileChannel && nonChunked) channel = fileChannel;
+		if (channel != pgkChannel && nonChunked) channel = pgkChannel;
 
 		AtomicLong movePos = new AtomicLong(pos);
 
@@ -471,8 +471,9 @@ public class PackageReader implements Closeable {
 			Supplier<ChunkChannel> chunkLoader = () -> {
 				try {
 					moveTo(chunk.compressedOffset, true);
-					if (readInt() != Package.PKG_SIGNATURE)
+					if (readInt() != Package.PKG_SIGNATURE) {
 						throw new IllegalStateException("Chunk does not seem to be Unreal package data");
+					}
 					int blockSize = readInt();
 					int compressedSize = readInt();
 					int uncompressedSize = readInt();

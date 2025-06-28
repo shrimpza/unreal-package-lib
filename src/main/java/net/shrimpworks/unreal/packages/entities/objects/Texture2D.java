@@ -18,6 +18,8 @@ import net.shrimpworks.unreal.packages.entities.properties.Property;
 
 /**
  * A texture object from Unreal Engine 3.
+ * <p>
+ * Able to read texture data from LZO compressed chunks.
  */
 public class Texture2D extends TextureBase<Texture2D.MipMap> {
 
@@ -35,7 +37,7 @@ public class Texture2D extends TextureBase<Texture2D.MipMap> {
 			this.flag = flag;
 		}
 
-		public static Set<BulkDataFlags> fromFlags(long flags) {
+		static Set<BulkDataFlags> fromFlags(long flags) {
 			Set<BulkDataFlags> dataFlags = EnumSet.noneOf(BulkDataFlags.class);
 			dataFlags.addAll(Arrays.stream(values()).filter(f -> (flags & f.flag) == f.flag).collect(Collectors.toSet()));
 			return dataFlags;

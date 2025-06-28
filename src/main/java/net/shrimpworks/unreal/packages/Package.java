@@ -190,11 +190,11 @@ public class Package implements Closeable {
 
 		if (version >= 249) {
 			// maybe we'd want to validate after reading the header
-			int headerSize = reader.readInt();
+			reader.readInt(); // skipping: headerSize
 		}
 		if (version >= 269) {
 			// this seems to not be used
-			String folderName = reader.readString();
+			reader.readString(); // skipping: folderName
 		}
 
 		this.flags = reader.readInt();
@@ -210,29 +210,26 @@ public class Package implements Closeable {
 
 		if (version >= 415) {
 			// dependencies table position - not used
-			int dependsPos = reader.readInt();
+			reader.readInt(); // skipping: dependsPos
 		}
 
 		if (version >= 584) {
-			// 16 unknown bytes - a GUID?
-			byte[] unknown = new byte[16];
-			reader.readBytes(unknown, 0, 16);
+			reader.moveRelative(16); // skipping: 16 unknown bytes (a GUID?)
 		}
 
 		if (version < 68) {
 			// unused, we don't care about the heritage values or the heritage table
-			reader.readInt(); // consume heritageCount
-			reader.readInt(); // consume heritagePos
+			reader.readInt(); // skipping: heritageCount
+			reader.readInt(); // skipping: heritagePos
 		} else {
 			// unused, we don't care about the guid, or generation counters or the generation information
-			byte[] guid = new byte[16];
-			reader.readBytes(guid, 0, 16);
+			reader.moveRelative(16); // skipping: guid
 			int generationCount = reader.readInt();
 			for (int i = 0; i < generationCount; i++) {
-				reader.readInt(); // consume genExpCount
-				reader.readInt(); // consume genNameCount
+				reader.readInt(); // skipping: genExpCount
+				reader.readInt(); // skipping: genNameCount
 				if (version > 322) {
-					reader.readInt(); // consume netObjectsCount
+					reader.readInt(); // skipping: netObjectsCount
 				}
 			}
 		}
@@ -241,10 +238,10 @@ public class Package implements Closeable {
 
 		if (version >= 277) {
 			// we don't track the cooker version
-			int cookerVersion = reader.readInt();
+			reader.readInt(); // skipping: cookerVersion
 		}
 
-		// read compressed chunk information, and tell the package reader about them
+		// read compressed chunk information and tell the package reader about them
 		this.compressionFormat = version >= 334 ? CompressionFormat.fromFlag(reader.readInt()) : CompressionFormat.NONE;
 		this.compressedChunkCount = version >= 334 ? reader.readInt() : 0;
 		if (compressionFormat != CompressionFormat.NONE) {
@@ -504,9 +501,9 @@ public class Package implements Closeable {
 
 		Name name = name(reader.readNameIndex());
 
-		ObjectReference archetype = version >= 220
-			? objectReference(reader.readInt())
-			: ObjectReference.NULL;
+		if (version >= 220) {
+			reader.readInt(); // skipping: archetype (ObjectReference)
+		}
 
 		long flags = version >= 195 ? reader.readLong() : reader.readInt();
 
@@ -528,7 +525,7 @@ public class Package implements Closeable {
 		}
 
 		if (version >= 220) {
-			int exportFlags = reader.readInt();
+			reader.readInt(); // skipping: exportFlags
 		}
 
 		int netObjectCount = 0;
@@ -537,18 +534,16 @@ public class Package implements Closeable {
 		}
 
 		if (version >= 220) {
-			byte[] guid = new byte[16];
-			reader.readBytes(guid, 0, 16);
+			reader.moveRelative(16); // skipping: guid
 		}
 
 		if (version >= 487) {
-			int packageFlags = reader.readInt();
+			reader.readInt(); // skipping: packageFlags
 		}
 
 		if (netObjectCount > 0) {
-			ObjectReference[] netObjects = new ObjectReference[netObjectCount];
 			for (int i = 0; i < netObjectCount; i++) {
-				netObjects[i] = objectReference(reader.readIndex());
+				reader.readIndex(); // skipping: netObjects[] (ObjectReference)
 			}
 		}
 
@@ -610,7 +605,7 @@ public class Package implements Closeable {
 		}
 
 		if (version >= 322) {
-			int netIndex = reader.readIndex();
+			reader.readIndex(); // skipping: netIndex
 		}
 
 		List<Property> properties = readProperties();
@@ -639,7 +634,7 @@ public class Package implements Closeable {
 					  actually the first item of the array. In the second case, we need to replace
 					  it with a new array property.
 					 */
-					Property lastProperty = properties.get(properties.size() - 1);
+					Property lastProperty = properties.getLast();
 					if (lastProperty instanceof ArrayProperty) {
 						properties.remove(lastProperty);
 						properties.add(((ArrayProperty)lastProperty).add((ArrayProperty.ArrayItem)p));
@@ -682,7 +677,7 @@ public class Package implements Closeable {
 		StructProperty.StructType structType = null;
 		if (propType == PropertyType.StructProperty) {
 			int structIdx = reader.readIndex();
-			structType = structIdx >= 0 ? StructProperty.StructType.get(names[structIdx]) : null;
+			structType = structIdx >= 0 ? StructProperty.StructType.get(name(structIdx)) : null;
 			if (structType == null) {
 				throw new IllegalStateException(String.format("Unknown struct type index %d for property %s", structIdx, name.name));
 			}
@@ -763,54 +758,39 @@ public class Package implements Closeable {
 		int startPos = reader.position();
 
 		try {
-			switch (type) {
-				case BoolProperty:
-					return new BooleanProperty(this, name, arrayFlag);
-				case ByteProperty:
-					return new ByteProperty(this, name, reader.readByte());
-				case EnumProperty:
-					return new EnumProperty(this, name, name(reader.readNameIndex()));
-				case IntProperty:
-					return new IntegerProperty(this, name, reader.readInt());
-				case FloatProperty:
-					return new FloatProperty(this, name, reader.readFloat());
-				case StrProperty:
-				case StringProperty:
-					return new StringProperty(this, name, reader.readString(size));
-				case NameProperty:
-					return new NameProperty(this, name, name.equals(Name.NONE) ? Name.NONE : name(reader.readNameIndex()));
-				case ObjectProperty:
-					return new ObjectProperty(this, name, objectReference(reader.readIndex()));
-				case StructProperty:
-					switch (structType) {
-						case PointRegion:
-							return new StructProperty.PointRegionProperty(this, name, objectReference(reader.readIndex()),
-																		  reader.readInt(), reader.readByte());
-						case Scale:
-							return new StructProperty.ScaleProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
-																	reader.readFloat(), reader.readByte());
-						case Rotator:
-							return new StructProperty.RotatorProperty(this, name, reader.readInt(), reader.readInt(), reader.readInt());
-						case Color:
-							return new StructProperty.ColorProperty(this, name, reader.readByte(), reader.readByte(), reader.readByte(),
-																	reader.readByte());
-						case Sphere:
-							return new StructProperty.SphereProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
+			return switch (type) {
+				case BoolProperty -> new BooleanProperty(this, name, arrayFlag);
+				case ByteProperty -> new ByteProperty(this, name, reader.readByte());
+				case EnumProperty -> new EnumProperty(this, name, name(reader.readNameIndex()));
+				case IntProperty -> new IntegerProperty(this, name, reader.readInt());
+				case FloatProperty -> new FloatProperty(this, name, reader.readFloat());
+				case StrProperty, StringProperty -> new StringProperty(this, name, reader.readString(size));
+				case NameProperty -> new NameProperty(this, name, name.equals(Name.NONE) ? Name.NONE : name(reader.readNameIndex()));
+				case ObjectProperty -> new ObjectProperty(this, name, objectReference(reader.readIndex()));
+				case StructProperty -> switch (structType) {
+					case PointRegion -> new StructProperty.PointRegionProperty(this, name, objectReference(reader.readIndex()),
+																			   reader.readInt(), reader.readByte());
+					case Scale -> new StructProperty.ScaleProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
+																   reader.readFloat(), reader.readByte());
+					case Rotator -> new StructProperty.RotatorProperty(this, name, reader.readInt(), reader.readInt(), reader.readInt());
+					case Color -> new StructProperty.ColorProperty(this, name, reader.readByte(), reader.readByte(), reader.readByte(),
+																   reader.readByte());
+					case Sphere -> new StructProperty.SphereProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat(),
 																	 reader.readFloat());
-						case Vector:
-						default:
-							// unknown struct, but perhaps we can assume it to be a vector at least
-							if (size == 12) {
-								return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
-																		 reader.readFloat());
-							}
-							return new StructProperty.UnknownStructProperty(this, name);
+					default -> {
+						// unknown struct, but perhaps we can assume it to be a vector at least
+						if (size == 12) {
+							yield new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(),
+																	reader.readFloat());
+						}
+						yield new StructProperty.UnknownStructProperty(this, name);
 					}
-				case RotatorProperty:
-					return new StructProperty.RotatorProperty(this, name, reader.readInt(), reader.readInt(), reader.readInt());
-				case VectorProperty:
-					return new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat());
-				case ArrayProperty:
+				};
+				case RotatorProperty ->
+					new StructProperty.RotatorProperty(this, name, reader.readInt(), reader.readInt(), reader.readInt());
+				case VectorProperty ->
+					new StructProperty.VectorProperty(this, name, reader.readFloat(), reader.readFloat(), reader.readFloat());
+				case ArrayProperty -> {
 					int arraySize = reader.readIndex();
 					if (name.name.equalsIgnoreCase("ReferencedTextures")) {
 						List<ObjectProperty> items = IntStream.range(0, arraySize)
@@ -818,14 +798,13 @@ public class Package implements Closeable {
 																  this, name, objectReference(reader.readIndex())
 															  ))
 															  .collect(Collectors.toList());
-						return new ArrayProperty(this, name, items);
+						yield new ArrayProperty(this, name, items);
 					}
-					return new UnknownArrayProperty(this, name, arraySize);
-				case FixedArrayProperty:
-					return new FixedArrayProperty(this, name, objectReference(reader.readIndex()), reader.readIndex());
-				default:
-					throw new IllegalArgumentException("Cannot read unsupported property type " + type.name());
-			}
+					yield new UnknownArrayProperty(this, name, arraySize);
+				}
+				case FixedArrayProperty -> new FixedArrayProperty(this, name, objectReference(reader.readIndex()), reader.readIndex());
+				default -> throw new IllegalArgumentException("Cannot read unsupported property type " + type.name());
+			};
 		} finally {
 			// if we didn't read all the property's bytes somehow, fast-forward to the end of the property...
 			// FIXME PointRegionProperty in version >= 126 specifically seems larger than specs indicate; 7 extra bytes

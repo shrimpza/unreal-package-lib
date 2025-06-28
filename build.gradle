@@ -2,7 +2,7 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'jacoco'
-	id 'org.gradlex.extra-java-module-info' version '1.9'
+	id 'org.gradlex.extra-java-module-info' version '1.12'
 }
 
 group = 'net.shrimpworks'
@@ -47,7 +47,8 @@ dependencies {
 		exclude group: 'commons-logging', module: 'commons-logging'
 	}
 
-  testImplementation('org.junit.jupiter:junit-jupiter:5.11.4')
+  testImplementation('org.junit.jupiter:junit-jupiter:5.13.2')
+	testRuntimeOnly('org.junit.platform:junit-platform-launcher')
 }
 
 extraJavaModuleInfo {

@@ -5,6 +5,7 @@ module shrimpworks.unreal.packages {
 	requires lzo.core;
 
 	exports net.shrimpworks.unreal.packages;
+	exports net.shrimpworks.unreal.packages.compression;
 	exports net.shrimpworks.unreal.packages.entities;
 	exports net.shrimpworks.unreal.packages.entities.objects;
 	exports net.shrimpworks.unreal.packages.entities.objects.geometry;
