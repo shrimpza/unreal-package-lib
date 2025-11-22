@@ -54,6 +54,11 @@ public class Texture extends TextureBase<Texture.MipMap> {
 
 	@Override
 	protected byte[] readImage(MipMap mip) {
+		if (mip == null) throw new IllegalArgumentException("MipMap must be non-null must be provided");
+		if (mip.size <= 0) throw new IllegalArgumentException("MipMap size must be greater than zero");
+		if (mip.widthOffset <= 0) throw new IllegalArgumentException("MipMap offset must be greater than zero");
+		if (mip.width <= 0 || mip.height <= 0) throw new IllegalArgumentException("MipMap must have a width and height");
+
 		reader.moveTo(mip.widthOffset - mip.size);
 		byte[] data = new byte[mip.size];
 		int pos = 0;

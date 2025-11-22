@@ -2,11 +2,11 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'jacoco'
-	id 'org.gradlex.extra-java-module-info' version '1.12'
+	id 'org.gradlex.extra-java-module-info' version '1.13.1'
 }
 
 group = 'net.shrimpworks'
-version = "1.13"
+version = "1.14"
 if (System.getenv().containsKey("BUILD_NUMBER")) {
 	version += ".${System.env.BUILD_NUMBER}"
 } else version += ".DEV"
@@ -47,7 +47,7 @@ dependencies {
 		exclude group: 'commons-logging', module: 'commons-logging'
 	}
 
-  testImplementation('org.junit.jupiter:junit-jupiter:5.13.2')
+  testImplementation('org.junit.jupiter:junit-jupiter:5.14.1')
 	testRuntimeOnly('org.junit.platform:junit-platform-launcher')
 }
 
