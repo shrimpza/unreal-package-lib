@@ -11,8 +11,10 @@ jobs:
 
     steps:
       # Node is required for checkout
-      - name: Install Node
-        run: apt-get update && apt-get install -y nodejs
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Checkout
         uses: actions/checkout@v4
