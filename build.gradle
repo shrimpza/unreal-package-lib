@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'net.shrimpworks'
-version = "1.14"
+version = "1.15"
 if (System.getenv().containsKey("BUILD_NUMBER")) {
 	version += ".${System.env.BUILD_NUMBER}"
 } else version += ".DEV"
@@ -24,13 +24,14 @@ publishing {
 	repositories {
 		maven {
 			name = "ShrimpWorks"
-			url = 'https://code.shrimpworks.za.net/artefacts/'
-			authentication {
-				basic(BasicAuthentication)
+			url = 'https://git.pookaroo.au/api/packages/shrimp/maven'
+			credentials(HttpHeaderCredentials) {
+				name = "Authorization"
+				value = "token ${System.env.PACKAGES_TOKEN}"
 			}
-			credentials(PasswordCredentials) {
-				username = "${System.env.ARTEFACTS_USER}"
-				password = "${System.env.ARTEFACTS_PASSWORD}"
+
+			authentication {
+				header(HttpHeaderAuthentication)
 			}
 		}
 	}

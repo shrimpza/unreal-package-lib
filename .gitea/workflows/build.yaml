@@ -1,0 +1,23 @@
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: gradle:9.2.1-jdk21-jammy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test
+        run: gradle --no-daemon test
+
+      - name: Publish
+        env:
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          BUILD_NUMBER: ${{ gitea.run_number }}
+        run: gradle --no-daemon publish
