@@ -2,13 +2,16 @@ package net.shrimpworks.unreal.packages;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
 import net.shrimpworks.unreal.packages.entities.Export;
@@ -32,7 +35,12 @@ public class PackageUE3Test extends PackageTestUtils {
 
 	@BeforeAll
 	public static void setup() throws IOException, InterruptedException {
-		ut3Map = fetchAndCache(UT3_MAP_URL, Paths.get(System.getProperty("java.io.tmpdir", "/tmp")).resolve("DM-MMC-DeathFan.ut3"));
+		ut3Map = Files.createTempFile("test-map-", ".ut3");
+		try (InputStream is = PackageTest.class.getResourceAsStream("DM-MCC-DeathFan.ut3.gz");
+			 GZIPInputStream gis = new GZIPInputStream(is)) {
+			Files.copy(gis, ut3Map, StandardCopyOption.REPLACE_EXISTING);
+		}
+//		ut3Map = fetchAndCache(UT3_MAP_URL, Paths.get(System.getProperty("java.io.tmpdir", "/tmp")).resolve("DM-MMC-DeathFan.ut3"));
 	}
 
 	@Test
