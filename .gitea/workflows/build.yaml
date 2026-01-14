@@ -10,6 +10,10 @@ jobs:
       image: gradle:9.2.1-jdk21-jammy
 
     steps:
+      # Node is required for checkout
+      - name: Install Node
+        run: apt-get update && apt-get install -y nodejs
+
       - name: Checkout
         uses: actions/checkout@v4
 
