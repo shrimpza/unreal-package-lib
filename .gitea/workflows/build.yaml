@@ -6,24 +6,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container:
-      image: gradle:9.2.1-jdk21-jammy
-
     steps:
-      # Node is required for checkout
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+
       - name: Test
-        run: gradle --no-daemon test
+        run: ./gradlew --no-daemon test
 
       - name: Publish
         env:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
           BUILD_NUMBER: ${{ gitea.run_number }}
-        run: gradle --no-daemon publish
+        run: ./gradlew --no-daemon publish
