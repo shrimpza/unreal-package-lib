@@ -415,23 +415,25 @@ public class PackageReader implements Closeable {
 		String string = "";
 
 		if (version < 64) {
-			// read to NUL/0x00
-			byte[] val = new byte[255];
-			byte len = 0, v;
-			while ((v = readByte()) != 0x00) {
-				val[len] = v;
-				len++;
-			}
-			if (len > 0) string = new String(Arrays.copyOfRange(val, 0, len), StandardCharsets.ISO_8859_1);
+			// read to NUL/0x00, bounded by the property length when it is known
+			byte[] val = new byte[length > -1 ? length : 255];
+			int len = 0;
+			byte v;
+			while (len < val.length && (v = readByte()) != 0x00) val[len++] = v;
+			if (len > 0) string = new String(val, 0, len, StandardCharsets.ISO_8859_1);
 		} else {
-			// Note: Oddity in some properties, where length byte reports longer than the property length
-			int len = version > 117 ? readIndex() : length > -1 ? Math.min(length, readByte() & 0xFF) : readByte() & 0xFF;
+			// string property lengths are stored as compact indexes; name table entries in UE1 and UE2
+			// packages are prefixed with a plain byte length instead
+			int len = version > 117 || length > -1 ? readIndex() : readByte() & 0xFF;
 
-			// UE3 uses negative lengths to indicate unicode strings
+			// a negative length indicates a wide (UCS-2) string - used by UE1 and UE2 packages as well as UE3
 			Charset charset = len < 0 ? StandardCharsets.UTF_16LE : StandardCharsets.ISO_8859_1;
-			int readLen = len < 0 ? -(len * 2) : len;
+			int readLen = len < 0 ? -len * 2 : len;
 
-			if (readLen != 0) {
+			// Note: Oddity in some properties, where the length reports longer than the property length
+			if (length > -1) readLen = Math.min(length, readLen);
+
+			if (readLen > 0) {
 				byte[] val = new byte[readLen];
 				ensureRemaining(readLen);
 				buffer.get(val);
@@ -439,7 +441,12 @@ public class PackageReader implements Closeable {
 			}
 		}
 
-		return string.trim();
+		// strings are NUL terminated, and the terminator is counted in the length
+		int nul = string.indexOf(0);
+		if (nul > -1) string = string.substring(0, nul);
+
+		// note: deliberately not trim(), which would also strip the 0x1B escapes of UT colour markup
+		return string.strip();
 	}
 
 	// -- private helpers
